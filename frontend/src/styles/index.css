@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ---------- "Lavender Sky" design tokens ---------- */
+@theme {
+  --color-lavender-50: #F8F5FF;
+  --color-lavender-100: #EFE9FD;
+  --color-lavender-200: #DED3F8;
+  --color-lavender-300: #C7B5F0;
+  --color-lavender-500: #9277DB;
+  --color-primary-600: #6B4FC4;
+  --color-primary-700: #56399F;
+  --color-ink-900: #241B4B;
+  --color-ink-600: #4E4577;
+  --color-sky-200: #C9DDFF;
+  --color-star-400: #F2CF6B;
+  --color-success-600: #1F7A5C;
+  --color-warning-600: #9A6400;
+  --color-info-600: #3E5BA9;
+  --color-danger-600: #B3261E;
+
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Kannada", system-ui, sans-serif;
+  --font-kannada: "Noto Sans Kannada", "Plus Jakarta Sans", system-ui, sans-serif;
+
+  --radius-card: 22px;
+  --shadow-soft: 0 10px 30px -12px rgb(107 79 196 / 0.28);
+}
+
+:root {
+  --bg-gradient: linear-gradient(180deg, #F8F5FF 0%, #F1ECFF 55%, #C9DDFF 100%);
+  color-scheme: light;
+}
+
+html { font-size: 18px; } /* low-literacy baseline: 18px body text */
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-ink-900);
+  background: var(--bg-gradient) fixed;
+  -webkit-font-smoothing: antialiased;
+}
+html[lang="kn"] body { font-family: var(--font-kannada); line-height: 1.65; }
+
+/* Static CSS star layer — always present; it is the fallback when WebGL is off (Lite mode). */
+.static-stars {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgb(146 119 219 / .55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 72%, rgb(146 119 219 / .45) 50%, transparent 51%),
+    radial-gradient(2px 2px at 44% 32%, rgb(242 207 107 / .8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 61% 12%, rgb(146 119 219 / .5) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 73% 58%, rgb(146 119 219 / .45) 50%, transparent 51%),
+    radial-gradient(2px 2px at 86% 26%, rgb(242 207 107 / .7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 82%, rgb(146 119 219 / .5) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 8% 88%, rgb(146 119 219 / .4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 52% 90%, rgb(146 119 219 / .4) 50%, transparent 51%);
+  background-size: 420px 420px;
+}
+
+/* Frosted glass card */
+.glass {
+  background: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-lavender-200);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Visible focus for keyboard users */
+:focus-visible {
+  outline: 3px solid var(--color-primary-700);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* Reading highlight used when text-to-speech is unavailable / while speaking */
+.reading-highlight { background: rgb(242 207 107 / 0.35); border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Lite mode: no blur (cheap on low-end GPUs), no animations */
+html.lite .glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgb(255 255 255 / .92); }
+html.lite *, html.lite *::before, html.lite *::after { animation: none !important; transition: none !important; }
+
+.leaflet-container { border-radius: 18px; }

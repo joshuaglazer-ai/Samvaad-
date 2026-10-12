@@ -1,0 +1,112 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { initialLite, saveLite } from "./device";
+
+export type Speaker = "learner" | "parent" | "helper";
+
+export interface Profile {
+  language: "en" | "kn";
+  district?: string;
+  learner_education?: string;
+  learner_interests: string[];
+  top_concerns: string[];
+  income_bracket?: string | null;
+  helper_mode: boolean;
+}
+
+interface AppState {
+  sessionId: string | null;
+  setSessionId: (id: string | null) => void;
+  profile: Profile;
+  setProfile: (p: Partial<Profile>) => void;
+  lite: boolean;
+  setLite: (on: boolean) => void;
+  readAloud: boolean;
+  setReadAloud: (on: boolean) => void;
+  disclaimerSeen: boolean;
+  markDisclaimerSeen: () => void;
+  reset: () => void;
+}
+
+const emptyProfile: Profile = {
+  language: "en",
+  learner_interests: [],
+  top_concerns: [],
+  income_bracket: null,
+  helper_mode: false,
+};
+
+const Ctx = createContext<AppState | null>(null);
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function store(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage may be unavailable */
+  }
+}
+
+export function AppStateProvider({ children }: { children: ReactNode }) {
+  const [sessionId, setSessionIdState] = useState<string | null>(() => load("samvaad.session", null));
+  const [profile, setProfileState] = useState<Profile>(() => load("samvaad.profile", emptyProfile));
+  const [lite, setLiteState] = useState<boolean>(() => initialLite());
+  const [readAloud, setReadAloud] = useState<boolean>(() => load("samvaad.readAloud", true));
+  const [disclaimerSeen, setDisclaimerSeen] = useState<boolean>(() => load("samvaad.disclaimer", false));
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("lite", lite);
+  }, [lite]);
+
+  const setSessionId = useCallback((id: string | null) => {
+    setSessionIdState(id);
+    store("samvaad.session", id);
+  }, []);
+  const setProfile = useCallback((p: Partial<Profile>) => {
+    setProfileState((prev) => {
+      const next = { ...prev, ...p };
+      store("samvaad.profile", next);
+      return next;
+    });
+  }, []);
+  const setLite = useCallback((on: boolean) => {
+    setLiteState(on);
+    saveLite(on);
+  }, []);
+  const setRead = useCallback((on: boolean) => {
+    setReadAloud(on);
+    store("samvaad.readAloud", on);
+  }, []);
+  const markDisclaimerSeen = useCallback(() => {
+    setDisclaimerSeen(true);
+    store("samvaad.disclaimer", true);
+  }, []);
+  const reset = useCallback(() => {
+    setSessionId(null);
+    setProfileState(emptyProfile);
+    store("samvaad.profile", emptyProfile);
+    setDisclaimerSeen(false);
+    store("samvaad.disclaimer", false);
+  }, [setSessionId]);
+
+  const value = useMemo(
+    () => ({
+      sessionId, setSessionId, profile, setProfile, lite, setLite,
+      readAloud, setReadAloud: setRead, disclaimerSeen, markDisclaimerSeen, reset,
+    }),
+    [sessionId, setSessionId, profile, setProfile, lite, setLite, readAloud, setRead, disclaimerSeen, markDisclaimerSeen, reset],
+  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useAppState(): AppState {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useAppState outside provider");
+  return v;
+}
