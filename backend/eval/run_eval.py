@@ -23,6 +23,12 @@ from app.config import get_settings
 from app.db import Base
 from app.guardrail import check
 from app.llm import get_llm
+from app.prompts import PROMISE_WORDS
+
+# Word limits per language. Kannada and Telugu are agglutinative: one written word often carries what English
+# says in two or three (e.g. "ಸಂಪಾದಿಸುತ್ತಾರೆ" = "they earn"), and scripts split differently, so the same short
+# answer counts as fewer — but longer — words. 80 keeps the same spoken length budget (decision D26).
+WORD_LIMIT = {"en": 60, "hi": 60, "kn": 80, "te": 80}
 from seed.seed import seed
 
 HERE = Path(__file__).resolve().parent
@@ -66,6 +72,7 @@ def run_one(db, q: dict, llm) -> dict:
         "numbers_backed": numbers_ok,
         "geo_level": next((c["evidence"]["geo_level"] for c in cards_ok if c["type"] == "outcome"), None),
         "reply": out["reply_text"],
+        "words": len(out["reply_text"].split()),
     }
     checks = {
         "concern": actual["concern"] == exp["concern"],
@@ -77,6 +84,8 @@ def run_one(db, q: dict, llm) -> dict:
         # Figures must carry evidence; a plain list of options has no figures and no card.
         "evidence": exp["data_found"] is not True or source_shown or tools == ["list_trades"],
         "guardrail": actual["guardrail"] in ("pass", "regenerated") and numbers_ok,
+        "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
+        "no_promises": not any(w.lower() in out["reply_text"].lower() for w in PROMISE_WORDS),
     }
     return {"q": q, "actual": actual, "checks": checks, "pass": all(checks.values())}
 
@@ -105,17 +114,18 @@ def write_report(results: list[dict], mode: str, path: Path) -> None:
         "Checks: **concern** detected category = expected · **tools** expected data tool called · **data** found / not found as expected · "
         "**escalation** case created iff expected · **honest_fallback** missing data → gap logged + counsellor offered · "
         "**evidence** every shown card carries source + status · **guardrail** reply passed the numeric guardrail and every number "
-        "re-checks against the shown data.",
+        "re-checks against the shown data (spoken rounding allowed only after \"about\") · **length** ≤ 60 words "
+        "(≤ 80 for Kannada/Telugu, see D26) · **no_promises** no \"guaranteed / surely / 100%\"-style words.",
         "",
-        "| ID | Lang | Question | Concern (exp → act) | Tools called | Data found (exp → act) | Geo level | Guardrail | Source shown | Escalated (exp → act) | Result |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| ID | Lang | Question | Concern (exp → act) | Tools called | Data found (exp → act) | Geo level | Guardrail | Source shown | Escalated (exp → act) | Words | Result |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         q, a, e = r["q"], r["actual"], r["q"]["expect"]
         lines.append(
             f"| {q['id']} | {q['lang']} | {md_escape(q['text'])} | {e['concern']} → {a['concern']} | {', '.join(a['tools']) or '—'} | "
             f"{e['data_found']} → {a['data_found']} | {a['geo_level'] or '—'} | {a['guardrail']} | {'yes' if a['source_shown'] else 'no'} | "
-            f"{e['escalate']} → {a['escalated']} | {'PASS' if r['pass'] else 'FAIL: ' + ', '.join(k for k, v in r['checks'].items() if not v)} |")
+            f"{e['escalate']} → {a['escalated']} | {a['words']} | {'PASS' if r['pass'] else 'FAIL: ' + ', '.join(k for k, v in r['checks'].items() if not v)} |")
     lines += ["", "## Replies", ""]
     for r in results:
         lines.append(f"**{r['q']['id']}** — {md_escape(r['q']['text'])}  ")

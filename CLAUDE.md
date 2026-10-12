@@ -28,6 +28,12 @@ Decisions go in `docs/decisions.md`. Data fields in `docs/data_dictionary.md`. S
 10. App must run fully with `LLM_MODE=mock` (no API key). Mock still calls real data tools.
 11. Do not add: vector DBs, fine-tuning, multi-agent frameworks, LangChain, WhatsApp, user accounts.
 
+## Answer shape (Update 2)
+Max ~50 words, 2–3 short sentences, one idea: (1) reassure — one warm, varied line; (2) one simple fact from the
+tool result in everyday words, amounts rounded with "about" (nearest ₹500/₹1,000, see guardrail.py; exact figures
+stay on the card); (3) one gentle next step. Never "guaranteed", "surely", "definitely", "100%". Kind no-data line:
+"I don't have reliable data on this yet. A counsellor can help — would you like that?"
+
 ## Tone
 Minimal, simple, warm, professional. Short sentences, everyday words. Acknowledge before answering
 ("That is an important question."). Never use: backward, convince, low-status, uneducated, only a trade,

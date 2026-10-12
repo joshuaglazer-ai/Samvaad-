@@ -15,6 +15,13 @@ Documented exceptions (not treated as statistics)
   * School classes 8, 10 and 12 when written as a class ("Class 12", "12th", "12ನೇ", "SSLC/PUC" context),
     because families describe education this way.
   Derived figures (e.g. monthly × 12) are NOT allowed — the reply must quote the tool's own figure.
+
+Spoken rounding rule (Update 2, decision D25)
+  Replies may round amounts for easy listening ONLY when the number is introduced by an approximation word
+  ("about", "around", "nearly", "roughly", "ಸುಮಾರು", "लगभग", "करीब", "సుమారు", "దాదాపు" …). Such a claim matches a
+  tool value v ≥ 1,000 if it equals v rounded (half up) to the nearest 500 or the nearest 1,000.
+  Example: tool 14,250 → "about ₹14,000" or "about ₹14,500" pass; "₹14,000" without "about" fails;
+  "about ₹15,000" fails. Percentages may be rounded to a whole number. Exact figures always stay on the card.
 """
 from __future__ import annotations
 
@@ -44,6 +51,13 @@ CLAIM_RE = re.compile(
 CLASS_CONTEXT_RE = re.compile(r"(class|std\.?|standard|grade|ತರಗತಿ)\s*$", re.IGNORECASE)
 CLASS_SUFFIX_RE = re.compile(r"^\s*(th|st|nd|rd|ನೇ|ನೆಯ)", re.IGNORECASE)
 PLAIN_NUM_RE = re.compile(NUM)
+APPROX_RE = re.compile(
+    r"(about|around|approx\.?|approximately|roughly|nearly|close to|almost|"
+    r"ಸುಮಾರು|ಅಂದಾಜು|ಹೆಚ್ಚು ಕಡಿಮೆ|लगभग|करीब|क़रीब|तकरीबन|क़रीबन|సుమారు|సుమారుగా|దాదాపు)\s*(of\s*)?(₹|rs\.?|inr|ಶೇ\.?|ಶೇಕಡಾ)?\s*$",
+    re.IGNORECASE,
+)
+ROUNDING_STEPS = (500, 1000)
+ROUNDING_MIN = 1000
 
 
 @dataclass
@@ -55,6 +69,7 @@ class Claim:
     mult: int             # unit multiplier (1 if none)
     is_percent: bool
     has_unit: bool        # ₹ / % / k / lakh / thousand …
+    approx: bool = False  # introduced by "about"/"ಸುಮಾರು"/… → spoken rounding rule applies
     exempt: str | None = None
 
 
@@ -90,7 +105,8 @@ def extract_claims(text: str) -> list[Claim]:
         for idx, n in enumerate(nums):
             shown, dec = _to_float(n)
             claim = Claim(raw=mt.group(0).strip(), value=shown * mult, shown=shown, decimals=dec,
-                          mult=mult, is_percent=pct, has_unit=has_unit)
+                          mult=mult, is_percent=pct, has_unit=has_unit,
+                          approx=bool(APPROX_RE.search(text[max(0, mt.start() - 30):mt.start() + (mt.start("num") - mt.start())])))
             # exemptions
             before = text[: mt.start("num") if idx == 0 else mt.start("num2")]
             after = text[(mt.end("num") if idx == 0 else mt.end("num2")):]
@@ -128,9 +144,15 @@ def allowed_values(tool_outputs: list[Any]) -> set[float]:
     return vals
 
 
+def _round_half_up(v: float, step: int) -> float:
+    return ((v + step / 2) // step) * step
+
+
 def _matches(claim: Claim, allowed: set[float]) -> bool:
     tol = 0.5 * 10 ** (-claim.decimals) + 1e-9
     for v in allowed:
+        if claim.approx and v >= ROUNDING_MIN and not claim.is_percent and                 any(_round_half_up(v, step) == claim.value for step in ROUNDING_STEPS):
+            return True
         if claim.value == v:
             return True
         # Same number at the precision the reply used: 118000 → "1.2 lakh", 73.6 → "74%".
@@ -157,8 +179,8 @@ def correction_note(unmatched: list[str], language: str) -> str:
 
 
 FALLBACK_TEXT = {
-    "en": ("I want to be careful with numbers, and I could not confirm this answer from our data. "
-           "Please look at the card below, if shown. A counsellor can also help you. Would you like to talk to one?"),
-    "kn": ("ಅಂಕಿಅಂಶಗಳ ವಿಷಯದಲ್ಲಿ ನಾನು ಎಚ್ಚರಿಕೆಯಿಂದ ಇರಬೇಕು. ಈ ಉತ್ತರವನ್ನು ನಮ್ಮ ಮಾಹಿತಿಯಿಂದ ಖಚಿತಪಡಿಸಲು ಆಗಲಿಲ್ಲ. "
-           "ಕೆಳಗೆ ಕಾರ್ಡ್ ಇದ್ದರೆ ದಯವಿಟ್ಟು ನೋಡಿ. ಸಲಹೆಗಾರರೂ ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಹುದು. ಅವರೊಂದಿಗೆ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಾ?"),
+    "en": "I want to be careful with numbers, and I couldn't confirm this one. Please see the card below. "
+          "A counsellor can help — would you like that?",
+    "kn": "ಅಂಕಿಅಂಶಗಳಲ್ಲಿ ನಾನು ಎಚ್ಚರಿಕೆಯಿಂದ ಇರಬೇಕು; ಇದನ್ನು ಖಚಿತಪಡಿಸಲು ಆಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಕೆಳಗಿನ ಕಾರ್ಡ್ ನೋಡಿ. "
+          "ಸಲಹೆಗಾರರು ಸಹಾಯ ಮಾಡಬಹುದು — ಬೇಕೇ?",
 }

@@ -106,6 +106,10 @@ def plan(text: str, ctx: dict) -> list[tuple[str, dict]]:
 
 
 # ------------------------------------------------------------------------------------------ composing
+# Answer shape (Update 2): reassure (varied) → one simple fact → one gentle next step. ≤ ~50 words.
+# Exact figures stay on the card; the text uses "about" + the rounding rule in guardrail.py.
+
+
 def inr(n: float | int | None) -> str:
     """Indian digit grouping: 118000 → 1,18,000."""
     if n is None:
@@ -119,198 +123,221 @@ def inr(n: float | int | None) -> str:
     return ("-" if n < 0 else "") + s
 
 
+def approx_amount(v: float | int) -> int:
+    """Spoken rounding (documented in guardrail.py): nearest ₹1,000 from ₹10,000 up, else nearest ₹500."""
+    step = 1000 if v >= 10000 else 500
+    return int((v + step / 2) // step * step)
+
+
 def pct(x: float | None) -> str:
     if x is None:
         return "—"
-    return str(int(x)) if float(x).is_integer() else f"{x:.1f}"
+    return str(int(round(x)))
 
+
+REASSURE = {
+    "en": {
+        "income": ["It's natural to think about earnings first.", "Earnings matter to every family.", "That's a fair thing to ask."],
+        "job_security": ["Wanting a steady job is a fair hope.", "Every family wants some security.", "That's an important worry."],
+        "social_status": ["Many families have this question.", "Respect matters to every family.", "That's a very common worry."],
+        "safety": ["Your child's safety matters most.", "It's right to think about safety.", "Safety comes first for every family."],
+        "cost": ["Cost is an important part of this decision.", "It's wise to plan for costs early.", "Many families worry about fees."],
+        "distance_migration": ["Staying close to family matters.", "It's natural to want training near home.", "Being near home is important to many families."],
+        "degree_first": ["Many families think about a degree first.", "Studying further is a good thought.", "That's a thoughtful question."],
+        "other": ["Thank you for asking.", "Good question.", "Happy to help with that."],
+    },
+    "kn": {
+        "income": ["ಮೊದಲು ಸಂಪಾದನೆಯ ಬಗ್ಗೆ ಯೋಚಿಸುವುದು ಸಹಜ.", "ಸಂಪಾದನೆ ಪ್ರತಿಯೊಂದು ಕುಟುಂಬಕ್ಕೂ ಮುಖ್ಯ.", "ಇದು ಕೇಳಬೇಕಾದ ಪ್ರಶ್ನೆ."],
+        "job_security": ["ಸ್ಥಿರ ಕೆಲಸದ ಆಸೆ ಸಹಜ.", "ಪ್ರತಿಯೊಂದು ಕುಟುಂಬಕ್ಕೂ ಭದ್ರತೆ ಬೇಕು.", "ಇದು ಮುಖ್ಯವಾದ ಚಿಂತೆ."],
+        "social_status": ["ಹಲವು ಕುಟುಂಬಗಳಿಗೆ ಈ ಪ್ರಶ್ನೆ ಇರುತ್ತದೆ.", "ಗೌರವ ಎಲ್ಲರಿಗೂ ಮುಖ್ಯ.", "ಇದು ತುಂಬಾ ಸಾಮಾನ್ಯ ಚಿಂತೆ."],
+        "safety": ["ನಿಮ್ಮ ಮಗುವಿನ ಸುರಕ್ಷತೆ ಎಲ್ಲಕ್ಕಿಂತ ಮುಖ್ಯ.", "ಸುರಕ್ಷತೆಯ ಬಗ್ಗೆ ಯೋಚಿಸುವುದು ಸರಿ.", "ಪ್ರತಿ ಕುಟುಂಬಕ್ಕೂ ಸುರಕ್ಷತೆ ಮೊದಲು."],
+        "cost": ["ಖರ್ಚು ಈ ನಿರ್ಧಾರದ ಮುಖ್ಯ ಭಾಗ.", "ಖರ್ಚಿನ ಬಗ್ಗೆ ಮೊದಲೇ ಯೋಚಿಸುವುದು ಜಾಣತನ.", "ಹಲವು ಕುಟುಂಬಗಳಿಗೆ ಶುಲ್ಕದ ಚಿಂತೆ ಇರುತ್ತದೆ."],
+        "distance_migration": ["ಕುಟುಂಬದ ಹತ್ತಿರ ಇರುವುದು ಮುಖ್ಯ.", "ಮನೆಯ ಹತ್ತಿರ ತರಬೇತಿ ಬೇಕೆನ್ನುವುದು ಸಹಜ.", "ಹಲವು ಕುಟುಂಬಗಳಿಗೆ ಮನೆಯ ಹತ್ತಿರ ಇರುವುದು ಮುಖ್ಯ."],
+        "degree_first": ["ಹಲವು ಕುಟುಂಬಗಳು ಮೊದಲು ಪದವಿಯ ಬಗ್ಗೆ ಯೋಚಿಸುತ್ತವೆ.", "ಮುಂದೆ ಓದುವ ಯೋಚನೆ ಒಳ್ಳೆಯದು.", "ಇದು ಯೋಚಿಸಿ ಕೇಳಿದ ಪ್ರಶ್ನೆ."],
+        "other": ["ಕೇಳಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ.", "ಒಳ್ಳೆಯ ಪ್ರಶ್ನೆ.", "ಸಹಾಯ ಮಾಡಲು ಸಂತೋಷ."],
+    },
+}
 
 T = {
     "en": {
-        "ack": "That is an important question.",
-        "acks": ["Thank you for asking.", "That is worth knowing.", "Good question.", "That is an important question."],
-        "ack_parent": "That is an important question, and it is right to ask it.",
-        "demo": " This is demo data, for testing only.",
-        "state_fb": " District data is not available. This is the state-level figure.",
-        "national_fb": " District and state data are not available. This is the national figure.",
-        "older": " The latest year is not available here, so this is an earlier year.",
-        "card": " See the card below.",
-        "nodata": "I don't have verified data for this yet. A counsellor can help you with it. Would you like to talk to one?",
-        "offer": "A counsellor can help you with it. Would you like to talk to one?",
-        "outcome": "For {trade}{place}, {rate}% of trained learners got a job ({period}). Typical monthly earnings were ₹{median}, from ₹{lo} to ₹{hi}, based on {n} learners. Source: {source}.",
-        "outcome_noearn": "For {trade}{place}, {rate}% of trained learners got a job ({period}), based on {n} learners. Source: {source}.",
-        "status_line": " Skilled work is recognised on NSQF, a national ladder of skill levels, and it can grow step by step.",
-        "ladder": "Here is the career ladder for {trade}. It starts with: {first}. It can lead to: {last}.",
-        "can_start": " The learner can start this training now.",
-        "cannot_start": " This training needs: {req}.",
-        "nsqf": " NSQF is a national ladder of skill levels.",
-        "degree_honest": " A degree can also be a good path. It depends on the learner's goals.",
-        "costs_free": "For {trade}, some courses are free and fees go up to ₹{hi}.",
-        "costs_range": "For {trade}, course fees are from ₹{lo} to ₹{hi}.",
-        "costs_none": "For {trade}, I could not find a fee figure.",
-        "support": " Support: {items}",
-        "providers": "In {district}, these centres offer {trade} training: {names}. You can visit and ask about placements and safety.",
-        "providers_none": "I don't have verified data for this yet. I could not find a {trade} centre in {district} in our data.",
-        "providers_other": " Centres for this trade are listed in: {other}.",
-        "safety": "Your concern for safety matters. Training centres teach safe work practices, and you can visit one to see it yourself. I don't have verified workplace safety data yet; a counsellor can talk this through with you.",
-        "options": "Here are the options in our pilot: {names}.",
-        "escalate": "Thank you for telling us. This matters, and a counsellor is the right person to help. A counsellor will join shortly. You can wait here or ask for a call back.",
+        "src_demo": "from demo data, {period}",
+        "src": "from {source}, {period}",
+        "state_fb": " District data isn't available, so this is the state figure.",
+        "national_fb": " District and state data aren't available, so this is the national figure.",
+        "nodata": "I don't have reliable data on this yet. A counsellor can help — would you like that?",
+        "earn": "This data shows {trade} learners{place} usually earn about ₹{amount} a month ({src}).",
+        "placed": "This data shows about {rate}% of {trade} learners{place} found work after training ({src}).",
+        "valued": "Skilled work like {trade} is valued and needed everywhere.",
+        "ladder": "{trade} has a clear growth path, from {first} up to {last}.",
+        "can_start": " Your child can start now.",
+        "cannot_start": " It needs: {req}.",
+        "degree_honest": " For some learners a degree is also a good path.",
+        "costs_free": "For {trade}, some courses are free and others cost up to about ₹{hi}.",
+        "costs_range": "For {trade}, fees are about ₹{lo} to ₹{hi}.",
+        "costs_none": "I couldn't find a fee figure for {trade}.",
+        "scheme": " Eligible families may get free training under a scheme.",
+        "scheme_maybe": " Support may be available, depending on family income.",
+        "providers": "In {district}, you can visit {name}.",
+        "providers_more": " There are {n} more centres on the card.",
+        "providers_none": "I couldn't find a {trade} centre in {district} in our data.",
+        "safety": "Training centres follow safety rules, and learners are taught protective practices.",
+        "options": "Some options are {names}.",
+        "escalate": "Thank you for telling us. A counsellor is the right person to help and will join shortly. You can wait here or ask for a call back.",
         "escalate_request": "Of course. A counsellor will join shortly. You can wait here or ask for a call back.",
-        "disagree": " You both want what is best. You see {value} a little differently. Let's look at both views.",
-        "q_outcome": " Would you like to see the next steps after this training?",
-        "q_ladder": " Would you like to know about fees and support?",
-        "q_costs": " Would you like to see training centres near you?",
-        "q_providers": " Would you like to know about earnings after this training?",
-        "q_options": " Which one would you like to know more about?",
+        "both_views": "You both want what is best. Let's look at {value} from both sides.",
+        "q_earn": " Would you like to see how this can grow?",
+        "q_placed": " Would you like to see training centres near you?",
+        "q_valued": " Shall I show you the growth path?",
+        "q_ladder": " Would you like to know about fees?",
+        "q_costs": " Shall I show training centres near you?",
+        "q_providers": " Would you like to know about earnings?",
+        "q_options": " Which one interests you?",
         "q_safety": " Would you like to talk to a counsellor about this?",
         "in_place": " in {district}",
     },
     "kn": {
-        "ack": "ಇದು ಮುಖ್ಯವಾದ ಪ್ರಶ್ನೆ.",
-        "acks": ["ಕೇಳಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ.", "ಇದನ್ನು ತಿಳಿಯುವುದು ಮುಖ್ಯ.", "ಒಳ್ಳೆಯ ಪ್ರಶ್ನೆ.", "ಇದು ಮುಖ್ಯವಾದ ಪ್ರಶ್ನೆ."],
-        "ack_parent": "ಇದು ಮುಖ್ಯವಾದ ಪ್ರಶ್ನೆ, ಇದನ್ನು ಕೇಳುವುದು ಸರಿಯಾಗಿದೆ.",
-        "demo": " ಇದು ಡೆಮೊ ಮಾಹಿತಿ, ಪರೀಕ್ಷೆಗೆ ಮಾತ್ರ.",
-        "state_fb": " ಜಿಲ್ಲಾ ಮಟ್ಟದ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ಇದು ರಾಜ್ಯ ಮಟ್ಟದ ಅಂಕಿ.",
-        "national_fb": " ಜಿಲ್ಲಾ ಮತ್ತು ರಾಜ್ಯ ಮಟ್ಟದ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ಇದು ರಾಷ್ಟ್ರ ಮಟ್ಟದ ಅಂಕಿ.",
-        "older": " ಇತ್ತೀಚಿನ ವರ್ಷದ ಮಾಹಿತಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಹಿಂದಿನ ವರ್ಷದ ಅಂಕಿ ತೋರಿಸಲಾಗಿದೆ.",
-        "card": " ಕೆಳಗಿನ ಕಾರ್ಡ್ ನೋಡಿ.",
-        "nodata": "ಇದಕ್ಕೆ ಇನ್ನೂ ಪರಿಶೀಲಿತ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರು ಇದರಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಹುದು. ಅವರೊಂದಿಗೆ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಾ?",
-        "offer": "ಸಲಹೆಗಾರರು ಇದರಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಹುದು. ಅವರೊಂದಿಗೆ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಾ?",
-        "outcome": "{place}{trade} ತರಬೇತಿ ಪಡೆದವರಲ್ಲಿ ಶೇ. {rate} ಜನರಿಗೆ ಕೆಲಸ ಸಿಕ್ಕಿದೆ ({period}). ಸಾಮಾನ್ಯ ತಿಂಗಳ ಸಂಪಾದನೆ ₹{median}; ₹{lo} ರಿಂದ ₹{hi} ವರೆಗೆ. ಇದು {n} ಕಲಿಯುವವರ ಆಧಾರದಲ್ಲಿ. ಮೂಲ: {source}.",
-        "outcome_noearn": "{place}{trade} ತರಬೇತಿ ಪಡೆದವರಲ್ಲಿ ಶೇ. {rate} ಜನರಿಗೆ ಕೆಲಸ ಸಿಕ್ಕಿದೆ ({period}), {n} ಕಲಿಯುವವರ ಆಧಾರದಲ್ಲಿ. ಮೂಲ: {source}.",
-        "status_line": " ಕೌಶಲದ ಕೆಲಸಕ್ಕೆ NSQF ಎಂಬ ಕೌಶಲ ಮಟ್ಟಗಳ ರಾಷ್ಟ್ರೀಯ ಏಣಿಯಲ್ಲಿ ಮಾನ್ಯತೆ ಇದೆ, ಮತ್ತು ಹಂತ ಹಂತವಾಗಿ ಬೆಳೆಯಬಹುದು.",
-        "ladder": "{trade} ವೃತ್ತಿ ಏಣಿ ಇಲ್ಲಿದೆ. ಮೊದಲ ಹಂತ: {first}. ಮುಂದೆ ತಲುಪಬಹುದಾದದ್ದು: {last}.",
-        "can_start": " ಕಲಿಯುವವರು ಈಗಲೇ ಈ ತರಬೇತಿ ಪ್ರಾರಂಭಿಸಬಹುದು.",
-        "cannot_start": " ಈ ತರಬೇತಿಗೆ ಬೇಕಾದದ್ದು: {req}.",
-        "nsqf": " NSQF ಎಂದರೆ ಕೌಶಲ ಮಟ್ಟಗಳ ರಾಷ್ಟ್ರೀಯ ಏಣಿ.",
-        "degree_honest": " ಪದವಿಯೂ ಒಳ್ಳೆಯ ದಾರಿ ಆಗಬಹುದು. ಅದು ಕಲಿಯುವವರ ಗುರಿಯನ್ನು ಅವಲಂಬಿಸಿದೆ.",
-        "costs_free": "{trade} ತರಬೇತಿಗೆ ಕೆಲವು ಕೋರ್ಸ್‌ಗಳು ಉಚಿತ; ಶುಲ್ಕ ₹{hi} ವರೆಗೆ ಇರಬಹುದು.",
-        "costs_range": "{trade} ತರಬೇತಿಗೆ ಶುಲ್ಕ ₹{lo} ರಿಂದ ₹{hi} ವರೆಗೆ.",
+        "src_demo": "ಡೆಮೊ ಮಾಹಿತಿ, {period}",
+        "src": "{source}, {period}",
+        "state_fb": " ಜಿಲ್ಲಾ ಮಾಹಿತಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಇದು ರಾಜ್ಯ ಮಟ್ಟದ ಅಂಕಿ.",
+        "national_fb": " ಜಿಲ್ಲಾ ಮತ್ತು ರಾಜ್ಯ ಮಾಹಿತಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಇದು ರಾಷ್ಟ್ರ ಮಟ್ಟದ ಅಂಕಿ.",
+        "nodata": "ಇದರ ಬಗ್ಗೆ ಇನ್ನೂ ವಿಶ್ವಾಸಾರ್ಹ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರು ಸಹಾಯ ಮಾಡಬಹುದು — ಬೇಕೇ?",
+        "earn": "ಈ ಮಾಹಿತಿಯ ಪ್ರಕಾರ {place}{trade} ಕಲಿತವರು ಸಾಮಾನ್ಯವಾಗಿ ತಿಂಗಳಿಗೆ ಸುಮಾರು ₹{amount} ಸಂಪಾದಿಸುತ್ತಾರೆ ({src}).",
+        "placed": "ಈ ಮಾಹಿತಿಯ ಪ್ರಕಾರ {place}{trade} ಕಲಿತವರಲ್ಲಿ ಸುಮಾರು ಶೇ. {rate} ಜನರಿಗೆ ಕೆಲಸ ಸಿಕ್ಕಿದೆ ({src}).",
+        "valued": "{trade} ನಂತಹ ಕೌಶಲದ ಕೆಲಸಕ್ಕೆ ಎಲ್ಲೆಡೆ ಮೌಲ್ಯ ಮತ್ತು ಬೇಡಿಕೆ ಇದೆ.",
+        "ladder": "{trade} ನಲ್ಲಿ ಬೆಳೆಯುವ ಸ್ಪಷ್ಟ ದಾರಿ ಇದೆ: {first} ರಿಂದ {last} ವರೆಗೆ.",
+        "can_start": " ನಿಮ್ಮ ಮಗು ಈಗಲೇ ಪ್ರಾರಂಭಿಸಬಹುದು.",
+        "cannot_start": " ಇದಕ್ಕೆ ಬೇಕಾದದ್ದು: {req}.",
+        "degree_honest": " ಕೆಲವರಿಗೆ ಪದವಿಯೂ ಒಳ್ಳೆಯ ದಾರಿ.",
+        "costs_free": "{trade} ತರಬೇತಿಗೆ ಕೆಲವು ಕೋರ್ಸ್‌ಗಳು ಉಚಿತ; ಕೆಲವಕ್ಕೆ ಸುಮಾರು ₹{hi} ವರೆಗೆ ಶುಲ್ಕ ಇದೆ.",
+        "costs_range": "{trade} ತರಬೇತಿ ಶುಲ್ಕ ಸುಮಾರು ₹{lo} ರಿಂದ ₹{hi}.",
         "costs_none": "{trade} ತರಬೇತಿಯ ಶುಲ್ಕದ ಅಂಕಿ ಸಿಗಲಿಲ್ಲ.",
-        "support": " ನೆರವು: {items}",
-        "providers": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ ಈ ಕೇಂದ್ರಗಳಲ್ಲಿ {trade} ತರಬೇತಿ ಸಿಗುತ್ತದೆ: {names}. ಅಲ್ಲಿಗೆ ಭೇಟಿ ನೀಡಿ ಕೆಲಸ ಮತ್ತು ಸುರಕ್ಷತೆ ಬಗ್ಗೆ ಕೇಳಬಹುದು.",
-        "providers_none": "ಇದಕ್ಕೆ ಇನ್ನೂ ಪರಿಶೀಲಿತ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. {district} ಜಿಲ್ಲೆಯಲ್ಲಿ {trade} ಕೇಂದ್ರ ನಮ್ಮ ಮಾಹಿತಿಯಲ್ಲಿ ಸಿಗಲಿಲ್ಲ.",
-        "providers_other": " ಈ ತರಬೇತಿಯ ಕೇಂದ್ರಗಳು ಇಲ್ಲಿವೆ: {other}.",
-        "safety": "ಸುರಕ್ಷತೆಯ ಬಗ್ಗೆ ನಿಮ್ಮ ಕಾಳಜಿ ಮುಖ್ಯ. ತರಬೇತಿ ಕೇಂದ್ರಗಳು ಸುರಕ್ಷಿತ ಕೆಲಸದ ವಿಧಾನಗಳನ್ನು ಕಲಿಸುತ್ತವೆ; ನೀವೇ ಭೇಟಿ ನೀಡಿ ನೋಡಬಹುದು. ಕೆಲಸದ ಸ್ಥಳದ ಸುರಕ್ಷತೆಯ ಪರಿಶೀಲಿತ ಮಾಹಿತಿ ಇನ್ನೂ ಇಲ್ಲ; ಸಲಹೆಗಾರರು ಇದರ ಬಗ್ಗೆ ನಿಮ್ಮೊಂದಿಗೆ ಮಾತನಾಡಬಹುದು.",
-        "options": "ನಮ್ಮ ಪ್ರಾಯೋಗಿಕ ಯೋಜನೆಯಲ್ಲಿರುವ ಆಯ್ಕೆಗಳು: {names}.",
-        "escalate": "ನಮಗೆ ತಿಳಿಸಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಇದು ಮುಖ್ಯ ವಿಷಯ, ಇದಕ್ಕೆ ಸಲಹೆಗಾರರೇ ಸರಿಯಾದ ಸಹಾಯ ಮಾಡಬಲ್ಲರು. ಸಲಹೆಗಾರರು ಸ್ವಲ್ಪ ಸಮಯದಲ್ಲಿ ಸೇರುತ್ತಾರೆ. ಇಲ್ಲೇ ಕಾಯಬಹುದು ಅಥವಾ ಮರಳಿ ಕರೆ ಕೇಳಬಹುದು.",
-        "escalate_request": "ಖಂಡಿತ. ಸಲಹೆಗಾರರು ಸ್ವಲ್ಪ ಸಮಯದಲ್ಲಿ ಸೇರುತ್ತಾರೆ. ಇಲ್ಲೇ ಕಾಯಬಹುದು ಅಥವಾ ಮರಳಿ ಕರೆ ಕೇಳಬಹುದು.",
-        "disagree": " ನೀವಿಬ್ಬರೂ ಉತ್ತಮವಾದದ್ದನ್ನೇ ಬಯಸುತ್ತೀರಿ. {value} ಬಗ್ಗೆ ನಿಮ್ಮ ನೋಟ ಸ್ವಲ್ಪ ಬೇರೆ. ಎರಡೂ ನೋಟಗಳನ್ನು ನೋಡೋಣ.",
-        "q_outcome": " ಈ ತರಬೇತಿಯ ನಂತರದ ಮುಂದಿನ ಹಂತಗಳನ್ನು ನೋಡಲು ಬಯಸುತ್ತೀರಾ?",
-        "q_ladder": " ಶುಲ್ಕ ಮತ್ತು ನೆರವಿನ ಬಗ್ಗೆ ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಾ?",
-        "q_costs": " ನಿಮ್ಮ ಹತ್ತಿರದ ತರಬೇತಿ ಕೇಂದ್ರಗಳನ್ನು ನೋಡಲು ಬಯಸುತ್ತೀರಾ?",
-        "q_providers": " ಈ ತರಬೇತಿಯ ನಂತರದ ಸಂಪಾದನೆಯ ಬಗ್ಗೆ ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಾ?",
-        "q_options": " ಯಾವುದರ ಬಗ್ಗೆ ಹೆಚ್ಚು ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಿ?",
+        "scheme": " ಅರ್ಹ ಕುಟುಂಬಗಳಿಗೆ ಯೋಜನೆಯಡಿ ಉಚಿತ ತರಬೇತಿ ಸಿಗಬಹುದು.",
+        "scheme_maybe": " ಕುಟುಂಬದ ಆದಾಯವನ್ನು ಅವಲಂಬಿಸಿ ನೆರವು ಸಿಗಬಹುದು.",
+        "providers": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ ನೀವು {name} ಗೆ ಭೇಟಿ ನೀಡಬಹುದು.",
+        "providers_more": " ಇನ್ನೂ {n} ಕೇಂದ್ರಗಳು ಕಾರ್ಡ್‌ನಲ್ಲಿವೆ.",
+        "providers_none": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ {trade} ಕೇಂದ್ರ ನಮ್ಮ ಮಾಹಿತಿಯಲ್ಲಿ ಸಿಗಲಿಲ್ಲ.",
+        "safety": "ತರಬೇತಿ ಕೇಂದ್ರಗಳು ಸುರಕ್ಷತಾ ನಿಯಮಗಳನ್ನು ಪಾಲಿಸುತ್ತವೆ, ಮತ್ತು ಕಲಿಯುವವರಿಗೆ ರಕ್ಷಣೆಯ ವಿಧಾನಗಳನ್ನು ಕಲಿಸಲಾಗುತ್ತದೆ.",
+        "options": "ಕೆಲವು ಆಯ್ಕೆಗಳು: {names}.",
+        "escalate": "ನಮಗೆ ತಿಳಿಸಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಇದಕ್ಕೆ ಸಲಹೆಗಾರರೇ ಸರಿಯಾದ ಸಹಾಯ; ಅವರು ಸ್ವಲ್ಪ ಸಮಯದಲ್ಲಿ ಸೇರುತ್ತಾರೆ. ಇಲ್ಲೇ ಕಾಯಬಹುದು ಅಥವಾ ಮರಳಿ ಕರೆ ಕೇಳಬಹುದು.",
+        "escalate_request": "ಸರಿ. ಸಲಹೆಗಾರರು ಸ್ವಲ್ಪ ಸಮಯದಲ್ಲಿ ಸೇರುತ್ತಾರೆ. ಇಲ್ಲೇ ಕಾಯಬಹುದು ಅಥವಾ ಮರಳಿ ಕರೆ ಕೇಳಬಹುದು.",
+        "both_views": "ನೀವಿಬ್ಬರೂ ಉತ್ತಮವಾದದ್ದನ್ನೇ ಬಯಸುತ್ತೀರಿ. {value} ಬಗ್ಗೆ ಎರಡೂ ನೋಟಗಳನ್ನು ನೋಡೋಣ.",
+        "q_earn": " ಇದು ಹೇಗೆ ಬೆಳೆಯಬಹುದು ಎಂದು ನೋಡೋಣವೇ?",
+        "q_placed": " ಹತ್ತಿರದ ತರಬೇತಿ ಕೇಂದ್ರಗಳನ್ನು ನೋಡೋಣವೇ?",
+        "q_valued": " ಬೆಳವಣಿಗೆಯ ದಾರಿಯನ್ನು ತೋರಿಸಲೇ?",
+        "q_ladder": " ಶುಲ್ಕದ ಬಗ್ಗೆ ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಾ?",
+        "q_costs": " ಹತ್ತಿರದ ತರಬೇತಿ ಕೇಂದ್ರಗಳನ್ನು ತೋರಿಸಲೇ?",
+        "q_providers": " ಸಂಪಾದನೆಯ ಬಗ್ಗೆ ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಾ?",
+        "q_options": " ಯಾವುದು ನಿಮಗೆ ಇಷ್ಟ?",
         "q_safety": " ಇದರ ಬಗ್ಗೆ ಸಲಹೆಗಾರರೊಂದಿಗೆ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಾ?",
         "in_place": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ ",
     },
 }
 
 
-def _limits(result: dict, t: dict) -> str:
-    codes = result.get("limitation_codes", [])
-    out = ""
-    if "state_fallback" in codes:
-        out += t["state_fb"]
-    if "national_fallback" in codes:
-        out += t["national_fb"]
-    if "older_year" in codes:
-        out += t["older"]
-    if "demo" in codes:
-        out += t["demo"]
-    return out
-
-
 def _district_name(d: str | None, lang: str) -> str:
     return DISTRICT_KN.get(d or "", d or "") if lang == "kn" else (d or "")
+
+
+def _fallback_note(res: dict, t: dict) -> str:
+    codes = res.get("limitation_codes", [])
+    if "state_fallback" in codes:
+        return t["state_fb"]
+    if "national_fallback" in codes:
+        return t["national_fb"]
+    return ""
+
+
+def _src(res: dict, rec: dict, t: dict) -> str:
+    period = rec.get("reporting_period", "")
+    if rec.get("data_status", res.get("data_status")) == "demo":
+        return t["src_demo"].format(period=period)
+    return t["src"].format(source=(res.get("source") or {}).get("title", ""), period=period)
+
+
+def reassure(concern: str, ctx: dict, lang: str) -> str:
+    options = REASSURE[lang].get(concern) or REASSURE[lang]["other"]
+    return options[ctx.get("turn", 0) % len(options)]
 
 
 def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
     lang = "kn" if ctx.get("language") == "kn" else "en"
     t = T[lang]
     concern = keyword_concern(user_text) or "other"
-    turn = ctx.get("turn", 0)
-    if turn == 0:
-        ack = t["ack_parent"] if ctx.get("speaker") == "parent" else t["ack"]
-    else:  # vary the acknowledgement so long sessions do not sound repetitive
-        ack = t["acks"][(turn - 1) % len(t["acks"])]
 
     for name, res in results:
         if name == "escalate":
             return t["escalate_request"] if res.get("trigger") == "user_request" else t["escalate"]
 
+    # When learner and parent ranked this concern's value differently, the reassurance acknowledges both views.
+    al = ctx.get("alignment") or {}
+    value = ALIGN_FOR_CONCERN.get(concern)
+    if al.get("complete") and value and al.get("biggest_difference") == value:
+        opener = t["both_views"].format(value=ALIGN_LABEL[lang][value])
+    else:
+        opener = reassure(concern, ctx, lang)
+
     if not results:
-        return ack + t["nodata"]
+        return f"{opener} {t['nodata']}"
     name, res = results[0]
     if not res.get("found"):
         if name == "get_providers" and res.get("trade_name"):
-            text = ack + " " + t["providers_none"].format(trade=res["trade_name"],
-                                                          district=_district_name(ctx.get("district"), lang))
-            if res.get("other_districts"):
-                text += t["providers_other"].format(other=", ".join(_district_name(d, lang) for d in res["other_districts"]))
-            return f"{text} {t['offer']}"
-        return ack + " " + t["nodata"]
+            miss = t["providers_none"].format(trade=res["trade_name"], district=_district_name(ctx.get("district"), lang))
+            return f"{opener} {miss} {t['nodata']}"
+        return f"{opener} {t['nodata']}"
 
-    text, question = "", ""
+    fact, question = "", ""
     if name == "get_trade_outcomes":
         rec = res["records"][0]
         place = ""
         if res.get("geo_level_used") == "district" and rec.get("district"):
             place = t["in_place"].format(district=_district_name(rec["district"], lang))
-        fields = dict(trade=res["trade_name"], place=place, rate=pct(rec.get("placement_rate")),
-                      period=rec["reporting_period"], median=inr(rec.get("earnings_median")),
-                      lo=inr(rec.get("earnings_min")), hi=inr(rec.get("earnings_max")),
-                      n=rec.get("sample_size"), source=(res.get("source") or {}).get("title", ""))
-        tpl = t["outcome"] if rec.get("earnings_median") is not None else t["outcome_noearn"]
-        text = tpl.format(**fields) + _limits(res, t)
+        fields = dict(trade=res["trade_name"], place=place, src=_src(res, rec, t))
         if concern == "social_status":
-            text += t["status_line"]
-        question = t["q_outcome"]
+            fact, question = t["valued"].format(trade=res["trade_name"]), t["q_valued"]
+        elif concern == "job_security" and rec.get("placement_rate") is not None:
+            fact, question = t["placed"].format(rate=pct(rec["placement_rate"]), **fields), t["q_placed"]
+        elif rec.get("earnings_median") is not None:
+            fact, question = t["earn"].format(amount=inr(approx_amount(rec["earnings_median"])), **fields), t["q_earn"]
+        else:
+            fact, question = t["placed"].format(rate=pct(rec.get("placement_rate")), **fields), t["q_placed"]
+        if concern != "social_status":
+            fact += _fallback_note(res, t)
     elif name == "get_progression":
         recs = res["records"]
-        text = t["ladder"].format(trade=res["trade_name"], first=recs[0]["title"], last=recs[-1]["title"])
+        fact = t["ladder"].format(trade=res["trade_name"], first=recs[0]["title"], last=recs[-1]["title"])
         if res.get("can_start_training") is True:
-            text += t["can_start"]
+            fact += t["can_start"]
         elif res.get("can_start_training") is False:
-            text += t["cannot_start"].format(req=res.get("trade_entry_requirement", ""))
-        text += t["nsqf"]
-        if concern == "degree_first" or (any(r["kind"] == "degree" for r in recs) and "degree" in user_text.lower()):
-            text += t["degree_honest"]
-        text += t["demo"]
+            fact += t["cannot_start"].format(req=res.get("trade_entry_requirement", ""))
+        if concern == "degree_first":
+            fact += t["degree_honest"]
         question = t["q_ladder"]
     elif name == "get_costs_and_support":
         rec = res["records"][0]
         lo, hi = rec.get("fee_min"), rec.get("fee_max")
         if hi is None:
-            text = t["costs_none"].format(trade=res["trade_name"])
+            fact = t["costs_none"].format(trade=res["trade_name"])
         elif lo == 0:
-            text = t["costs_free"].format(trade=res["trade_name"], hi=inr(hi))
+            fact = t["costs_free"].format(trade=res["trade_name"], hi=inr(approx_amount(hi)))
         else:
-            text = t["costs_range"].format(trade=res["trade_name"], lo=inr(lo), hi=inr(hi))
-        supports = [s["description"] for s in rec.get("supports", [])]
-        if supports:
-            text += t["support"].format(items=" ".join(supports))
-        text += _limits(res, t)
+            fact = t["costs_range"].format(trade=res["trade_name"], lo=inr(approx_amount(lo)), hi=inr(approx_amount(hi)))
+        schemes = [s for s in rec.get("supports", []) if s["support_type"] in ("scheme", "scholarship")]
+        if any(s["depends_on_income"] for s in schemes):
+            fact += t["scheme_maybe"]
+        elif schemes:
+            fact += t["scheme"]
         question = t["q_costs"]
     elif name == "get_providers":
-        names = ", ".join(p["name"] for p in res["records"])
-        base = t["providers"].format(district=_district_name(ctx.get("district"), lang),
-                                     trade=res["trade_name"], names=names)
+        recs = res["records"]
+        base = t["providers"].format(district=_district_name(ctx.get("district"), lang), name=recs[0]["name"])
+        if len(recs) > 1:
+            base += t["providers_more"].format(n=len(recs) - 1)
         if concern == "safety":
-            text = t["safety"] + " " + base
-            question = t["q_safety"]
+            fact, question = t["safety"], t["q_safety"]
         else:
-            text = base
-            question = t["q_providers"]
-        text += t["demo"]
+            fact, question = base, t["q_providers"]
     elif name == "list_trades":
-        text = t["options"].format(names=", ".join(r["name"] for r in res["records"]))
-        question = t["q_options"]
+        names = [r["name"] for r in res["records"]][:4]
+        fact, question = t["options"].format(names=", ".join(names)), t["q_options"]
 
-    # Acknowledge differing alignment priorities when this concern touches one of them.
-    al = ctx.get("alignment") or {}
-    value = ALIGN_FOR_CONCERN.get(concern)
-    if al.get("complete") and value and al.get("biggest_difference") == value:
-        text += t["disagree"].format(value=ALIGN_LABEL[lang][value])
-
-    return f"{ack} {text.strip()}{t['card'] if name != 'list_trades' else ''}{question}"
+    return f"{opener} {fact.strip()}{question}"

@@ -37,8 +37,9 @@ def test_income_question_returns_outcome_card_with_evidence(client):
     ev = card["evidence"]
     assert ev["data_status"] == "demo" and ev["source"] == "SAMVAAD simulated demo dataset"
     assert ev["reporting_period"] and ev["sample_size"] and ev["geo_level"] == "district"
-    assert "That is an important question" in out["reply_text"]
-    assert "demo data" in out["reply_text"].lower()
+    assert "It's natural to think about earnings first." in out["reply_text"]  # reassure first
+    assert "about ₹" in out["reply_text"] and "demo data" in out["reply_text"].lower()
+    assert len(out["reply_text"].split()) <= 50  # short answers (Update 2)
     assert out["quick_replies"]
     # every number in the reply is backed by the card data
     assert check(out["reply_text"], [card["data"], card["evidence"]]).passed
@@ -49,7 +50,7 @@ def test_kannada_reply_and_state_fallback(client):
     out = say(client, sid, "EV ಸರ್ವಿಸ್ ತಂತ್ರಜ್ಞರಿಗೆ ಸಂಬಳ ಎಷ್ಟು?", language="kn")
     card = out["cards"][0]
     assert card["evidence"]["geo_level"] == "state"
-    assert "ಜಿಲ್ಲಾ ಮಟ್ಟದ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ" in out["reply_text"]
+    assert "ರಾಜ್ಯ ಮಟ್ಟದ ಅಂಕಿ" in out["reply_text"]  # honest state-level fallback, said briefly
     assert out["guardrail_status"] == "pass"
 
 
@@ -59,7 +60,7 @@ def test_ladder_card_marks_eligibility(client):
     card = out["cards"][0]
     assert card["type"] == "ladder"
     assert card["data"]["steps"][0]["eligible"] is True
-    assert "national ladder of skill levels" in out["reply_text"]
+    assert "growth path" in out["reply_text"] and "Your child can start now." in out["reply_text"]
 
 
 def test_follow_up_uses_last_trade(client):
@@ -73,7 +74,7 @@ def test_follow_up_uses_last_trade(client):
 def test_unknown_trade_is_honest_and_logs_gap(client, SessionMaker):
     sid = new_session(client)
     out = say(client, sid, "How much does a plumber earn?")
-    assert "don't have verified data" in out["reply_text"]
+    assert "I don't have reliable data on this yet. A counsellor can help — would you like that?" in out["reply_text"]
     assert out["cards"][0]["evidence"]["data_status"] == "unavailable"
     with SessionMaker() as db:
         gaps = db.scalars(select(m.EvidenceGap).where(m.EvidenceGap.session_id == sid)).all()
@@ -126,7 +127,7 @@ def test_alignment_feeds_context(client):
     res = r.json()
     assert res["complete"] and res["biggest_difference"] == "earning_soon"
     out = say(client, sid, "How much can an electrician earn?")
-    assert "You both want what is best" in out["reply_text"]
+    assert out["reply_text"].startswith("You both want what is best.")
 
 
 def test_summary_built_from_shown_cards(client):

@@ -86,3 +86,36 @@ def test_extract_claims_marks_exemptions():
     assert claims[0].exempt == "small_integer"
     assert claims[1].exempt is None  # rupee amount is never exempt
     assert claims[2].is_percent
+
+
+# ---------------------------------------------------------------- spoken rounding rule (D25)
+ROUND = [{"earnings_median": 14250, "earnings_max": 18700, "placement_rate": 73.6, "sample_size": 186}]
+
+
+def test_about_rounding_to_500_or_1000_passes():
+    assert check("They usually earn about ₹14,000 a month.", ROUND).passed      # nearest 1,000
+    assert check("They usually earn about ₹14,500 a month.", ROUND).passed      # nearest 500
+    assert check("Fees go up to around ₹19,000.", ROUND).passed
+    assert check("ತಿಂಗಳಿಗೆ ಸುಮಾರು ₹14,000 ಸಂಪಾದನೆ.", ROUND).passed
+    assert check("लगभग ₹14,000 महीना।", ROUND).passed
+    assert check("నెలకు సుమారు ₹14,000.", ROUND).passed
+
+
+def test_rounding_needs_an_approximation_word():
+    assert not check("They earn ₹14,000 a month.", ROUND).passed
+
+
+def test_rounding_cannot_drift_beyond_one_step():
+    assert not check("They earn about ₹15,000 a month.", ROUND).passed
+    assert not check("They earn about ₹13,000 a month.", ROUND).passed
+
+
+def test_about_percent_rounds_to_whole_number():
+    assert check("About 74% found work.", ROUND).passed
+    assert check("ಸುಮಾರು ಶೇ. 74 ಜನರಿಗೆ ಕೆಲಸ.", ROUND).passed
+    assert not check("About 80% found work.", ROUND).passed
+
+
+def test_rounding_not_applied_to_small_values():
+    # 312 rounded to 500 would be misleading; the rule starts at ₹1,000.
+    assert not check("about ₹500", [{"fee": 312}]).passed
