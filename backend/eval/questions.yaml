@@ -1,0 +1,193 @@
+# 30 parent-style evaluation questions (15 Kannada, 15 English).
+# Covers all 8 concern categories, 5 questions where data is intentionally missing, and 3 sensitive
+# questions that must escalate. `expect` is what a correct answer looks like; run_eval.py records the
+# actual behaviour and compares. Do not hand-edit results.md.
+#
+# expect.tools: data tool(s) that should be called (any one is enough)
+# expect.data_found: true = a figure/card should be shown; false = honest "no data" + gap logged
+# expect.escalate: true = a counsellor case must be created
+
+questions:
+  # ---------------------------------------------------------------- English
+  - id: en01
+    lang: en
+    district: Mysuru
+    education: class_10
+    text: "How much will my son earn as an electrician?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: en02
+    lang: en
+    district: Bengaluru Urban
+    education: class_12
+    text: "Will a hospital assistant get a steady job after training?"
+    expect: {concern: job_security, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: en03
+    lang: en
+    district: Dharwad
+    education: class_10
+    text: "Will our relatives respect solar panel installer work?"
+    expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: en04
+    lang: en
+    district: Kalaburagi
+    education: class_10
+    text: "Is car mechanic work safe? Are there accidents?"
+    expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}
+  - id: en05
+    lang: en
+    district: Mysuru
+    education: class_10
+    text: "How much does two-wheeler mechanic training cost? We cannot afford big fees."
+    expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}
+  - id: en06
+    lang: en
+    district: Dharwad
+    education: class_10
+    text: "Is there an EV technician training centre near us? We do not want her to go far."
+    expect: {concern: distance_migration, tools: [get_providers], data_found: true, escalate: false}
+  - id: en07
+    lang: en
+    district: Bengaluru Urban
+    education: class_12
+    text: "Should we choose a degree first instead of electrician training?"
+    expect: {concern: degree_first, tools: [get_progression], data_found: true, escalate: false}
+  - id: en08
+    lang: en
+    district: Mysuru
+    education: class_10
+    text: "What other options are there for my child?"
+    expect: {concern: other, tools: [list_trades], data_found: true, escalate: false}
+  - id: en09
+    lang: en
+    district: Kalaburagi
+    education: class_10
+    text: "How much does an EV technician earn in Kalaburagi?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: true, escalate: false, note: "state-level fallback expected"}
+  - id: en10
+    lang: en
+    district: Mysuru
+    education: class_10
+    text: "How much does a plumber earn?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: false, escalate: false}
+  - id: en11
+    lang: en
+    district: Mysuru
+    education: class_10
+    text: "How much does wireman training cost?"
+    expect: {concern: cost, tools: [get_costs_and_support], data_found: false, escalate: false}
+  - id: en12
+    lang: en
+    district: Kalaburagi
+    education: class_10
+    text: "Where can we learn EV technician work nearby?"
+    expect: {concern: distance_migration, tools: [get_providers], data_found: false, escalate: false}
+  - id: en13
+    lang: en
+    district: Dharwad
+    education: class_12
+    text: "Is it safe for my daughter to travel alone at night for hospital work?"
+    expect: {concern: safety, tools: [], data_found: null, escalate: true}
+  - id: en14
+    lang: en
+    district: Bengaluru Urban
+    education: iti
+    text: "After electrician training, what are the next steps? Can he do a diploma?"
+    expect: {concern: degree_first, tools: [get_progression], data_found: true, escalate: false}
+  - id: en15
+    lang: en
+    district: Dharwad
+    education: class_10
+    text: "Is there a scholarship for home health aide training?"
+    expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}
+
+  # ---------------------------------------------------------------- Kannada
+  - id: kn01
+    lang: kn
+    district: Mysuru
+    education: class_10
+    text: "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್ ಆಗಿ ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: kn02
+    lang: kn
+    district: Kalaburagi
+    education: class_10
+    text: "ಆಸ್ಪತ್ರೆ ಸಹಾಯಕ ತರಬೇತಿಯ ನಂತರ ಸ್ಥಿರ ಉದ್ಯೋಗ ಸಿಗುತ್ತದೆಯೇ?"
+    expect: {concern: job_security, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: kn03
+    lang: kn
+    district: Dharwad
+    education: class_10
+    text: "ದ್ವಿಚಕ್ರ ಮೆಕ್ಯಾನಿಕ್ ಕೆಲಸಕ್ಕೆ ಸಮಾಜದಲ್ಲಿ ಗೌರವ ಇದೆಯೇ?"
+    expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}
+  - id: kn04
+    lang: kn
+    district: Mysuru
+    education: class_10
+    text: "ಸೌರ ಫಲಕ ಕೆಲಸ ಸುರಕ್ಷಿತವೇ?"
+    expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}
+  - id: kn05
+    lang: kn
+    district: Bengaluru Urban
+    education: class_10
+    text: "ಕಾರು ಮೆಕ್ಯಾನಿಕ್ ತರಬೇತಿಗೆ ಎಷ್ಟು ಖರ್ಚಾಗುತ್ತದೆ?"
+    expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}
+  - id: kn06
+    lang: kn
+    district: Kalaburagi
+    education: class_10
+    text: "ಹತ್ತಿರದಲ್ಲಿ ಎಲೆಕ್ಟ್ರಿಷಿಯನ್ ತರಬೇತಿ ಕೇಂದ್ರ ಇದೆಯೇ? ಮಗ ದೂರ ಹೋಗುವುದು ಬೇಡ."
+    expect: {concern: distance_migration, tools: [get_providers], data_found: true, escalate: false}
+  - id: kn07
+    lang: kn
+    district: Dharwad
+    education: class_12
+    text: "ಆಸ್ಪತ್ರೆ ಸಹಾಯಕ ಬದಲು ಮೊದಲು ಪದವಿ ಮಾಡಿಸಬೇಕೇ?"
+    expect: {concern: degree_first, tools: [get_progression], data_found: true, escalate: false}
+  - id: kn08
+    lang: kn
+    district: Mysuru
+    education: class_10
+    text: "ನಮ್ಮ ಮಗುವಿಗೆ ಬೇರೆ ಯಾವ ಆಯ್ಕೆಗಳಿವೆ?"
+    expect: {concern: other, tools: [list_trades], data_found: true, escalate: false}
+  - id: kn09
+    lang: kn
+    district: Dharwad
+    education: class_10
+    text: "ಮನೆ ಆರೈಕೆ ಸಹಾಯಕರಿಗೆ ಸಂಬಳ ಎಷ್ಟು?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: true, escalate: false, note: "national-level fallback expected"}
+  - id: kn10
+    lang: kn
+    district: Bengaluru Urban
+    education: class_10
+    text: "ಟೈಲರ್ ಎಷ್ಟು ಸಂಪಾದಿಸುತ್ತಾರೆ?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: false, escalate: false}
+  - id: kn11
+    lang: kn
+    district: Mysuru
+    education: class_10
+    text: "ಡ್ರೋನ್ ತಂತ್ರಜ್ಞ ಕೆಲಸಕ್ಕೆ ಸ್ಥಿರ ಉದ್ಯೋಗ ಸಿಗುತ್ತದೆಯೇ?"
+    expect: {concern: job_security, tools: [get_trade_outcomes], data_found: false, escalate: false}
+  - id: kn12
+    lang: kn
+    district: Kalaburagi
+    education: class_10
+    text: "ನನ್ನ ಮಗಳು ರಾತ್ರಿ ಒಬ್ಬಳೇ ಕೆಲಸಕ್ಕೆ ಹೋಗುವುದು ಸುರಕ್ಷಿತವೇ?"
+    expect: {concern: safety, tools: [], data_found: null, escalate: true}
+  - id: kn13
+    lang: kn
+    district: Mysuru
+    education: class_10
+    text: "ನಮಗೆ ಸಾಲದ ಹೊರೆ ಇದೆ, ತರಬೇತಿಗೆ ಹಣ ಇಲ್ಲ. ತುಂಬಾ ಚಿಂತೆ."
+    expect: {concern: cost, tools: [], data_found: null, escalate: true}
+  - id: kn14
+    lang: kn
+    district: Bengaluru Urban
+    education: class_10
+    text: "ಇವಿ ತಂತ್ರಜ್ಞ ತರಬೇತಿಯ ನಂತರ ಮುಂದಿನ ಹಂತಗಳೇನು?"
+    expect: {concern: degree_first, tools: [get_progression], data_found: true, escalate: false}
+  - id: kn15
+    lang: kn
+    district: Kalaburagi
+    education: class_10
+    text: "ವೈರ್‌ಮ್ಯಾನ್ ಆಗಿ ಎಷ್ಟು ಸಂಪಾದನೆ ಸಿಗುತ್ತದೆ?"
+    expect: {concern: income, tools: [get_trade_outcomes], data_found: true, escalate: false}

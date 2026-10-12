@@ -1,0 +1,40 @@
+# Render blueprint: backend (FastAPI) + PostgreSQL. Frontend is deployed separately (Vercel/Netlify).
+# After the first deploy, open a Render shell once and run:
+#   python -m seed.seed --all && python -m seed.simulate_sessions
+databases:
+  - name: samvaad-db
+    plan: free
+    databaseName: samvaad
+    user: samvaad
+
+services:
+  - type: web
+    name: samvaad-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Single process: live-chat rooms are held in memory (see docs/deployment.md).
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DATABASE_URL
+        fromDatabase: {name: samvaad-db, property: connectionString}
+      - key: LLM_MODE
+        value: mock
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5
+      - key: ANTHROPIC_FAST_MODEL
+        value: claude-haiku-4-5
+      - key: ADMIN_PIN
+        generateValue: true
+      - key: COUNSELLOR_PIN
+        generateValue: true
+      - key: PHONE_ENCRYPTION_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

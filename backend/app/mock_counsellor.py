@@ -34,11 +34,11 @@ INTEREST_TO_TRADE = {
 }
 
 INTENT_PATTERNS = {
-    "progression": ["next step", "ladder", "future", "grow", "after training", "after the training", "diploma",
+    "progression": ["next step", "ladder", "future", "grow", "diploma",
                     "degree", "higher stud", "study further", "career path", "ಮುಂದಿನ", "ಏಣಿ", "ಪದವಿ", "ಡಿಪ್ಲೊಮಾ",
-                    "ಮುಂದೆ ಓದ", "ನಂತರ"],
+                    "ಮುಂದೆ ಓದ", "ಮುಂದಿನ ಹಂತ"],
     "providers": ["where", "centre", "center", "institute", "near", "nearby", "visit", "ಎಲ್ಲಿ", "ಕೇಂದ್ರ", "ಹತ್ತಿರ"],
-    "costs": ["fee", "cost", "afford", "scholarship", "stipend", "loan", "free", "ಶುಲ್ಕ", "ಖರ್ಚು", "ವೆಚ್ಚ",
+    "costs": ["fee", "cost", "afford", "scholarship", "stipend", "loan", "free", "ಶುಲ್ಕ", "ಖರ್ಚ", "ವೆಚ್ಚ",
               "ವಿದ್ಯಾರ್ಥಿವೇತನ", "ಉಚಿತ", "ಸಾಲ"],
     "options": ["options", "which course", "what courses", "which trade", "what trades", "other option", "choices",
                 "ಆಯ್ಕೆ", "ಯಾವ ಕೋರ್ಸ್", "ಬೇರೆ"],

@@ -1,6 +1,7 @@
 """Environment settings. Secrets are read only here, on the backend."""
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DISTRICTS = ["Bengaluru Urban", "Mysuru", "Kalaburagi", "Dharwad"]
@@ -38,6 +39,15 @@ class Settings(BaseSettings):
     income_brackets: str = "<1.5L,1.5-3L,3-6L,>6L,prefer_not_to_say"
     # Analytics: cells with fewer sessions than this are suppressed.
     min_cell_size: int = 5
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalise_db_url(cls, v: str) -> str:
+        # Hosting providers hand out postgres:// URLs; SQLAlchemy + psycopg 3 needs postgresql+psycopg://
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
 
     @property
     def use_mock_llm(self) -> bool:

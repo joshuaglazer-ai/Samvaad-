@@ -25,12 +25,12 @@ CONCERN_KEYWORDS: dict[str, list[str]] = {
     "safety": ["safe", "danger", "accident", "risk", "harass", "night shift", "injur", "shock",
                "ಸುರಕ್ಷ", "ಅಪಾಯ", "ಅಪಘಾತ", "ಕಿರುಕುಳ", "ರಾತ್ರಿ ಪಾಳಿ"],
     "cost": ["fee", "cost", "afford", "loan", "debt", "expensive", "scholarship", "free", "stipend",
-             "ಶುಲ್ಕ", "ಖರ್ಚು", "ಸಾಲ", "ವೆಚ್ಚ", "ವಿದ್ಯಾರ್ಥಿವೇತನ", "ಉಚಿತ", "ಫೀಸ್"],
+             "ಶುಲ್ಕ", "ಖರ್ಚ", "ಸಾಲ", "ವೆಚ್ಚ", "ವಿದ್ಯಾರ್ಥಿವೇತನ", "ಉಚಿತ", "ಫೀಸ್"],
     "distance_migration": ["far", "away from home", "move to", "city", "hostel", "migrat", "outside", "near home",
                            "nearby", "where", "centre", "center", "ದೂರ", "ಬೇರೆ ಊರು", "ನಗರ", "ಹಾಸ್ಟೆಲ್", "ವಲಸೆ",
                            "ಹತ್ತಿರ", "ಎಲ್ಲಿ", "ಕೇಂದ್ರ"],
     "degree_first": ["degree", "college", "graduat", "engineering", "b.com", "b.sc", "study further", "higher studies",
-                     "next step", "after training", "future", "grow", "ladder", "diploma",
+                     "next step", "future", "grow", "ladder", "diploma",
                      "ಪದವಿ", "ಕಾಲೇಜು", "ಡಿಗ್ರಿ", "ಮುಂದೆ ಓದ", "ಮುಂದಿನ ಹಂತ", "ಡಿಪ್ಲೊಮಾ", "ಬೆಳವಣಿಗೆ"],
 }
 

@@ -191,3 +191,16 @@ def test_mock_is_default_without_key():
     from app.llm import get_llm, set_llm
     set_llm(None)
     assert isinstance(get_llm(), MockLLM)
+
+
+def test_kannada_inflected_cost_word_routes_to_costs(client):
+    # "ಖರ್ಚಾಗುತ್ತದೆ" (inflected) must match the cost keyword stem — regression from the eval run.
+    sid = new_session(client, language="kn")
+    out = say(client, sid, "ಕಾರು ಮೆಕ್ಯಾನಿಕ್ ತರಬೇತಿಗೆ ಎಷ್ಟು ಖರ್ಚಾಗುತ್ತದೆ?", language="kn")
+    assert out["cards"][0]["type"] == "costs"
+
+
+def test_job_after_training_question_shows_outcomes(client):
+    sid = new_session(client)
+    out = say(client, sid, "Will a hospital assistant get a steady job after training?")
+    assert out["cards"][0]["type"] == "outcome"
