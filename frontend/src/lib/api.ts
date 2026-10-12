@@ -161,6 +161,8 @@ export const api = {
   escalationMessages: (id: number, after = 0) =>
     request<TranscriptMessage[]>(`/api/escalations/${id}/messages?after=${after}`),
   escalationStatus: (id: number) => request<EscalationInfo>(`/api/escalations/${id}`),
+  sendEscalationMessage: (id: number, body: { text: string; speaker: string }) =>
+    post<TranscriptMessage>(`/api/escalations/${id}/messages`, body),
 
   // PIN-protected (demo-grade auth)
   counsellor: {

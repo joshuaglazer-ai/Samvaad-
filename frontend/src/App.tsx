@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import Header from "./components/ui/Header";
 import Footer from "./components/ui/Footer";
@@ -27,13 +27,14 @@ export default function App() {
   const wide = location.pathname.startsWith("/admin") || location.pathname.startsWith("/counsellor");
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <div className="relative flex min-h-screen flex-col">
       <div className="static-stars" aria-hidden="true" />
       <Header />
       <main className={`relative z-10 mx-auto w-full flex-1 px-4 pb-8 ${wide ? "max-w-7xl" : "max-w-3xl"}`}>
         <Suspense fallback={<Loading />}>
           <AnimatePresence mode="wait">
-            <motion.div
+            <m.div
               key={location.pathname}
               initial={lite ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -51,11 +52,12 @@ export default function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<Landing />} />
               </Routes>
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </Suspense>
       </main>
       <Footer />
     </div>
+    </LazyMotion>
   );
 }

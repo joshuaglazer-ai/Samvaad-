@@ -58,7 +58,7 @@ TOOL_TO_CARD = {"get_trade_outcomes": "outcome", "get_progression": "ladder", "g
 # ------------------------------------------------------------------------------------------------ context
 def build_history(db: Session, session_id: str, exclude_id: int | None) -> list[dict]:
     rows = list(db.scalars(select(m.Message).where(
-        m.Message.session_id == session_id, m.Message.role.in_(("user", "assistant")))
+        m.Message.session_id == session_id, m.Message.role.in_(("user", "assistant")), m.Message.live.is_(False))
         .order_by(m.Message.id.desc()).limit(HISTORY_MESSAGES + 1)))
     rows = [r for r in reversed(rows) if r.id != exclude_id][-HISTORY_MESSAGES:]
     msgs: list[dict] = []

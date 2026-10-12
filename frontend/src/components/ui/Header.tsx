@@ -20,14 +20,14 @@ export default function Header() {
     <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-4 py-3">
       <Link to="/" className="flex min-h-12 items-center gap-2 rounded-xl font-extrabold tracking-wide text-ink-900">
         <span className="text-star-400"><Icon name="star" size={26} strokeWidth={2.2} /></span>
-        <span className="text-lg">SAMVAAD</span>
+        <span className="text-base sm:text-lg">SAMVAAD</span>
       </Link>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => setLite(!lite)}
           aria-pressed={lite}
-          className={`flex min-h-12 items-center gap-1.5 rounded-2xl border px-3 text-sm font-semibold ${lite ? "border-primary-600 bg-primary-600 text-white" : "border-lavender-200 bg-white/80 text-ink-900"}`}
+          className={`flex min-h-12 items-center gap-1.5 whitespace-nowrap rounded-2xl border px-2.5 text-sm font-semibold ${lite ? "border-primary-600 bg-primary-600 text-white" : "border-lavender-200 bg-white/80 text-ink-900"}`}
           title={lite ? t("app.liteOn") : t("app.liteOff")}
         >
           <Icon name="feather" size={20} />
@@ -36,7 +36,7 @@ export default function Header() {
         <button
           type="button"
           onClick={switchLang}
-          className="flex min-h-12 items-center gap-1.5 rounded-2xl border border-lavender-200 bg-white/80 px-3 text-sm font-semibold text-ink-900"
+          className="flex min-h-12 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-lavender-200 bg-white/80 px-2.5 text-sm font-semibold text-ink-900"
           aria-label={`${t("app.language")}: ${t("app.switchTo")}`}
         >
           <Icon name="globe" size={20} />

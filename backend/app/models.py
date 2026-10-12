@@ -155,6 +155,8 @@ class Message(Base):
     tool_calls: Mapped[list] = mapped_column(JSON, default=list)
     cards: Mapped[list] = mapped_column(JSON, default=list)
     guardrail_status: Mapped[str] = mapped_column(String(12), default="na")  # pass|regenerated|fallback|na
+    # True for messages exchanged in the live counsellor room (kept out of the LLM history).
+    live: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 

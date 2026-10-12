@@ -1,3 +1,181 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { m } from "framer-motion";
+import Button from "../components/ui/Button";
+import IconCard from "../components/ui/IconCard";
+import Icon from "../components/ui/Icon";
+import ReadAloud from "../components/ui/ReadAloud";
+import { api, type AlignmentResult } from "../lib/api";
+import { useAppState } from "../lib/state";
+import { useSpeak } from "../lib/useSpeak";
+
+export const VALUES: [string, string][] = [
+  ["earning_soon", "rupee"], ["near_home", "home"], ["respect", "users"], ["study_further", "graduation"], ["safety", "shield"],
+];
+type Who = "learner" | "parent";
+
+function finePointer(): boolean {
+  try {
+    return window.matchMedia("(pointer: fine)").matches;
+  } catch {
+    return false;
+  }
+}
+
+/** One person arranges the 5 cards: tap in order (mobile), or drag ranked cards to swap (desktop). */
+function Ranker({ who, onSave }: { who: Who; onSave: (ranking: string[]) => Promise<void> }) {
+  const { t } = useTranslation();
+  const [order, setOrder] = useState<string[]>([]);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const desktop = finePointer();
+
+  const tap = (v: string) => setOrder((o) => (o.includes(v) ? o.filter((x) => x !== v) : [...o, v]));
+  const swap = (a: string, b: string) =>
+    setOrder((o) => {
+      const ia = o.indexOf(a), ib = o.indexOf(b);
+      if (ia < 0 || ib < 0) return o;
+      const next = [...o];
+      [next[ia], next[ib]] = [next[ib], next[ia]];
+      return next;
+    });
+
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-xl font-bold text-ink-900">
+        <Icon name={who === "learner" ? "learner" : "parent"} className="text-primary-700" />
+        {who === "learner" ? t("alignment.learnerTurn") : t("alignment.parentTurn")}
+      </h2>
+      <p className="mt-1 text-ink-600">{desktop ? t("alignment.dragHint") : t("alignment.tapHint")}</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label={t("alignment.title")}>
+        {VALUES.map(([v, icon]) => {
+          const rank = order.indexOf(v);
+          return (
+            <div
+              key={v}
+              draggable={desktop && rank >= 0}
+              onDragStart={() => setDragging(v)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => dragging && swap(dragging, v)}
+              onDragEnd={() => setDragging(null)}
+            >
+              <IconCard role="checkbox" icon={icon} label={t(`alignment.values.${v}`)} selected={rank >= 0}
+                badge={rank >= 0 ? t("alignment.rank", { n: rank + 1 }) : undefined} onClick={() => tap(v)} />
+            </div>
+          );
+        })}
+      </div>
+      {order.length > 0 && (
+        <ol className="mt-4 flex flex-wrap gap-2" aria-label={t("alignment.title")}>
+          {order.map((v, i) => (
+            <li key={v} className="rounded-full bg-white/85 px-3 py-1 text-sm font-semibold text-ink-900">
+              {i + 1}. {t(`alignment.values.${v}`)}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="mt-5 flex justify-between gap-3">
+        <Button variant="secondary" icon="refresh" onClick={() => setOrder([])}>{t("alignment.reset")}</Button>
+        <Button icon="check" disabled={order.length !== VALUES.length || saving}
+          onClick={async () => { setSaving(true); await onSave(order); setSaving(false); }}>
+          {t("alignment.save")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function AlignmentMessage({ result }: { result: AlignmentResult }) {
+  const { t } = useTranslation();
+  const label = (v: string) => t(`alignment.values.${v}`);
+  return (
+    <div className="space-y-2 text-lg text-ink-900">
+      <p className="font-semibold">{t("alignment.bothWantBest")}</p>
+      {result.shared_top.map((v) => <p key={v}>★ {t("alignment.sharedTop", { value: label(v) })}</p>)}
+      {result.biggest_difference
+        ? <p>{t("alignment.different", { value: label(result.biggest_difference) })}</p>
+        : result.shared_top.length === 0 ? null : <p>{t("alignment.allSame")}</p>}
+    </div>
+  );
+}
+
 export default function Alignment() {
-  return <section className="glass mt-6 p-6"><h1 className="text-2xl font-bold">Alignment</h1></section>;
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { sessionId, lite } = useAppState();
+  const { speak, stop, speakingId } = useSpeak();
+  const [who, setWho] = useState<Who | "done">("learner");
+  const [result, setResult] = useState<AlignmentResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) navigate("/start");
+  }, [sessionId, navigate]);
+
+  const save = (respondent: Who) => async (ranking: string[]) => {
+    if (!sessionId) return;
+    try {
+      const r = await api.saveAlignment(sessionId, { respondent, ranking });
+      if (respondent === "learner") setWho("parent");
+      else {
+        setResult(r);
+        setWho("done");
+      }
+    } catch {
+      setError(t("app.offline"));
+    }
+  };
+
+  const resultText = result
+    ? [t("alignment.bothWantBest"),
+       ...result.shared_top.map((v) => t("alignment.sharedTop", { value: t(`alignment.values.${v}`) })),
+       result.biggest_difference ? t("alignment.different", { value: t(`alignment.values.${result.biggest_difference}`) }) : ""].join(" ")
+    : "";
+
+  return (
+    <section className="mt-2">
+      <div className="glass p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-ink-900">{who === "done" ? t("alignment.resultTitle") : t("alignment.title")}</h1>
+          <ReadAloud speaking={speakingId === "align"} onStop={stop}
+            onSpeak={() => speak(who === "done" ? resultText : `${t("alignment.title")} ${t("alignment.intro")}`, "align")} compact />
+        </div>
+        {who !== "done" && <p className="mt-1 text-lg text-ink-600">{t("alignment.intro")}</p>}
+        {who === "parent" && (
+          <p className="mt-3 flex items-center gap-2 rounded-xl bg-star-400/25 px-3 py-2 font-semibold text-ink-900">
+            <Icon name="hand" /> {t("alignment.passTo")}
+          </p>
+        )}
+        {error && <p role="alert" className="mt-3 text-danger-600">{error}</p>}
+
+        <div className="mt-5">
+          {who === "learner" && <Ranker key="learner" who="learner" onSave={save("learner")} />}
+          {who === "parent" && <Ranker key="parent" who="parent" onSave={save("parent")} />}
+          {who === "done" && result && (
+            <m.div initial={lite ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <AlignmentMessage result={result} />
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {(["learner", "parent"] as const).map((p) => (
+                  <div key={p} className="rounded-2xl bg-white/80 p-3">
+                    <p className="mb-1 flex items-center gap-2 font-bold text-ink-900">
+                      <Icon name={p === "learner" ? "learner" : "parent"} className="text-primary-700" /> {t(`alignment.${p}`)}
+                    </p>
+                    <ol className="list-decimal pl-6 text-ink-900">
+                      {(result[p] ?? []).map((v) => (
+                        <li key={v} className={v === result.biggest_difference ? "font-bold text-primary-700" : ""}>{t(`alignment.values.${v}`)}</li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+              <Button className="mt-6 w-full" size="lg" iconRight="arrowRight" onClick={() => navigate("/mood/pre")}>
+                {t("alignment.continue")}
+              </Button>
+            </m.div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 }

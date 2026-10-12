@@ -1,3 +1,154 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import Button from "../components/ui/Button";
+import Icon from "../components/ui/Icon";
+import Toggle from "../components/ui/Toggle";
+import { VoiceMissingNotice } from "../components/ui/ReadAloud";
+import SpeakerToggle from "../components/chat/SpeakerToggle";
+import MessageBubble, { type ChatItem } from "../components/chat/MessageBubble";
+import MicButton from "../components/chat/MicButton";
+import QuickReplies from "../components/chat/QuickReplies";
+import TypingStars from "../components/chat/TypingStars";
+import EscalationPanel from "../components/chat/EscalationPanel";
+import { api, type EscalationInfo } from "../lib/api";
+import { useAppState, type Speaker } from "../lib/state";
+import { useSpeak } from "../lib/useSpeak";
+
 export default function Chat() {
-  return <section className="glass mt-6 p-6"><h1 className="text-2xl font-bold">Chat</h1></section>;
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { sessionId, profile, readAloud, setReadAloud, disclaimerSeen, markDisclaimerSeen } = useAppState();
+  const { speak, stop, speakingId, missingVoice, lang } = useSpeak();
+  const [items, setItems] = useState<ChatItem[]>([]);
+  const [speaker, setSpeaker] = useState<Speaker>("parent");
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [quick, setQuick] = useState<string[]>([]);
+  const [escalation, setEscalation] = useState<EscalationInfo | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const starters = [1, 2, 3, 4, 5, 6].map((n) => t(`chat.starter${n}`));
+
+  useEffect(() => {
+    if (!sessionId) {
+      navigate("/start");
+      return;
+    }
+    // Resume an existing conversation (e.g. after a language switch or reload).
+    api.transcript(sessionId).then((rows) => {
+      setItems(rows.map((r) => ({ id: String(r.id), role: r.role, speaker: r.speaker, text: r.text, cards: r.cards ?? [] })));
+    }).catch(() => undefined);
+  }, [sessionId, navigate]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [items, busy]);
+
+  const greeting = `${t("landing.greeting")} ${disclaimerSeen ? "" : t("app.disclaimer")}`.trim();
+  useEffect(() => {
+    if (readAloud && items.length === 0) speak(greeting, "greeting");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const send = async (text: string) => {
+    const clean = text.trim();
+    if (!clean || !sessionId || busy) return;
+    setError(null);
+    stop();
+    markDisclaimerSeen();
+    setItems((cur) => [...cur, { id: `u-${Date.now()}`, role: "user", speaker, text: clean, cards: [] }]);
+    setDraft("");
+    setBusy(true);
+    try {
+      const res = await api.chat({ session_id: sessionId, speaker, text: clean, language: i18n.language === "kn" ? "kn" : "en" });
+      const id = String(res.message_id);
+      setItems((cur) => [...cur, { id, role: "assistant", speaker: "bot", text: res.reply_text, cards: res.cards }]);
+      setQuick(res.quick_replies);
+      if (res.escalation) {
+        setEscalation(res.escalation);
+        setPanelOpen(true);
+      }
+      if (readAloud) speak(res.reply_text, id);
+    } catch {
+      setError(t("app.offline"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const talkToCounsellor = async () => {
+    if (!sessionId) return;
+    api.event({ session_id: sessionId, event_type: "counsellor_button" }).catch(() => undefined);
+    try {
+      const esc = escalation ?? (await api.escalate({ session_id: sessionId, trigger: "user_request" }));
+      setEscalation(esc);
+      setPanelOpen(true);
+    } catch {
+      setError(t("app.offline"));
+    }
+  };
+
+  const pick = (q: string) => {
+    api.event({ session_id: sessionId, event_type: "quick_reply_used" }).catch(() => undefined);
+    if (/counsel|ಸಲಹೆಗಾರ/i.test(q)) {
+      talkToCounsellor();
+      return;
+    }
+    send(q);
+  };
+
+  return (
+    <section className="mt-1 flex flex-col gap-3">
+      <div className="glass flex flex-wrap items-center justify-between gap-2 p-3">
+        <SpeakerToggle value={speaker} onChange={setSpeaker} helperMode={profile.helper_mode} />
+        <div className="flex flex-wrap items-center gap-1">
+          <Toggle checked={readAloud} onChange={setReadAloud} label={t("chat.autoRead")} icon="speaker" />
+          <Button variant="ghost" iconRight="arrowRight" onClick={() => navigate("/mood/post")}>{t("chat.finish")}</Button>
+        </div>
+      </div>
+      {profile.helper_mode && (
+        <p className="flex items-start gap-2 rounded-2xl bg-lavender-100 px-3 py-2 text-base text-ink-900">
+          <Icon name="helper" className="mt-0.5 shrink-0 text-primary-700" /> {t("chat.helperTip")}
+        </p>
+      )}
+      {missingVoice && <VoiceMissingNotice />}
+
+      <ul className="flex flex-col gap-4 py-2" aria-live="polite">
+        <MessageBubble
+          item={{ id: "greeting", role: "assistant", speaker: "bot", text: greeting, cards: [] }}
+          speaking={speakingId === "greeting"} onSpeak={() => speak(greeting, "greeting")} onStop={stop}
+        />
+        {items.map((it) => (
+          <MessageBubble key={it.id} item={it} speaking={speakingId === it.id} onSpeak={() => speak(it.text, it.id)} onStop={stop} />
+        ))}
+        {busy && <li><TypingStars /></li>}
+      </ul>
+      <div ref={endRef} />
+
+      {error && <p role="alert" className="rounded-xl bg-danger-600/10 px-3 py-2 text-danger-600">{error}</p>}
+
+      {escalation && panelOpen ? (
+        <EscalationPanel escalation={escalation} speaker={speaker} onBack={() => setPanelOpen(false)} />
+      ) : (
+        <div className="glass sticky bottom-2 z-10 space-y-3 !bg-white p-3">
+          <QuickReplies items={quick.length ? quick : starters} onPick={pick} disabled={busy} />
+          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
+            <label className="sr-only" htmlFor="chat-draft">{t("chat.placeholder")}</label>
+            <input
+              id="chat-draft" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("chat.placeholder")}
+              className="min-h-12 w-full min-w-0 flex-1 rounded-2xl border border-lavender-200 bg-white px-4 text-lg text-ink-900 placeholder:text-ink-600"
+            />
+            <Button type="submit" icon="send" disabled={busy || !draft.trim()}>{t("chat.send")}</Button>
+          </form>
+          <div className="flex flex-wrap items-start gap-2">
+            <MicButton lang={lang} onResult={send} disabled={busy} />
+            <Button variant="secondary" icon="chat" onClick={talkToCounsellor}>{t("chat.talkToCounsellor")}</Button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
