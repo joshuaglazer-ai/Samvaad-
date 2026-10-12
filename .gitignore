@@ -26,3 +26,4 @@ import_errors.csv
 Thumbs.db
 .idea/
 .vscode/
+*.tsbuildinfo
