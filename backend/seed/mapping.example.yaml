@@ -1,0 +1,45 @@
+# Mapping from the organiser's CSV columns to SAMVAAD outcome fields.
+# Copy this file, change the right-hand column names to match the organiser dataset, then run:
+#   python -m seed.import_csv --file data.csv --mapping mapping.yaml --status demo
+# Columns you do not have: delete the line (the field stays empty — the importer never guesses).
+
+source:
+  title: "Organiser dummy placement & earnings dataset (SIH26241)"
+  publisher: "SIH 2026 organisers / MSDE"
+  url: null
+  reporting_period: null          # fixed text, used when there is no reporting_period column
+
+columns:
+  trade: "Trade"                  # required — matched to trade slug, English name, or trade_aliases below
+  district: "District"            # blank → state-level row (unless geo_level column says otherwise)
+  geo_level: null                 # optional column with district | state | national
+  provider: "Training Centre"     # optional — creates/links a provider with the same data status
+  year: "Year"                    # required — e.g. 2024 or "2024-25" (first year is used)
+  reporting_period: "Period"      # optional, e.g. "FY 2024-25"
+  placed: "Placed"                # placement numerator
+  trained: "Certified"            # placement denominator
+  placement_rate: "Placement %"   # used only when placed/trained are missing
+  earnings_min: "Min Salary"
+  earnings_max: "Max Salary"
+  earnings_median: "Median Salary"
+  sample_size: "Sample Size"      # if missing, the placement denominator is used (it is the base of the rate)
+
+units:
+  earnings: monthly               # monthly | annual | monthly_thousand | annual_lakh
+  output_basis: monthly           # store as monthly | annual
+  placement_rate: percent         # percent (0-100) | fraction (0-1)
+
+defaults:
+  state: Karnataka
+
+trade_aliases:
+  "ITI Electrician": electrician
+  "Solar PV Installer (Suryamitra)": solar-pv-installer
+  "Two Wheeler Service Technician": two-wheeler-service-technician
+  "GDA": general-duty-assistant
+
+district_aliases:
+  "Bangalore": "Bengaluru Urban"
+  "Bangalore Urban": "Bengaluru Urban"
+  "Mysore": "Mysuru"
+  "Gulbarga": "Kalaburagi"

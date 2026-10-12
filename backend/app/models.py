@@ -41,6 +41,7 @@ class Trade(Base):
     duration_months: Mapped[int] = mapped_column(Integer)
     entry_requirement_en: Mapped[str] = mapped_column(String(200))
     entry_requirement_kn: Mapped[str] = mapped_column(String(300))
+    entry_min_education: Mapped[str] = mapped_column(String(20), default="class_10")
     job_roles_en: Mapped[list] = mapped_column(JSON, default=list)
     job_roles_kn: Mapped[list] = mapped_column(JSON, default=list)
     icon: Mapped[str] = mapped_column(String(40), default="tool")
@@ -95,6 +96,7 @@ class ProgressionStep(Base):
     nsqf_level: Mapped[int | None] = mapped_column(Integer)
     entry_requirement_en: Mapped[str] = mapped_column(String(200))
     entry_requirement_kn: Mapped[str] = mapped_column(String(300))
+    entry_min_education: Mapped[str] = mapped_column(String(20), default="class_10")
     duration_months: Mapped[int | None] = mapped_column(Integer)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"))
 
