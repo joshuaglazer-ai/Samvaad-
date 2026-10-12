@@ -280,6 +280,16 @@
     "resistanceShare": "ಪೋಷಕರ ನಕಾರಾತ್ಮಕ ಸಂದೇಶಗಳು",
     "filterDistrict": "ಜಿಲ್ಲೆ",
     "filterIncome": "ಆದಾಯ ಗುಂಪು",
-    "all": "ಎಲ್ಲಾ"
+    "all": "ಎಲ್ಲಾ",
+    "period": "ಅವಧಿ",
+    "showTable": "ಕೋಷ್ಟಕ ತೋರಿಸಿ",
+    "showChart": "ಚಾರ್ಟ್ ತೋರಿಸಿ",
+    "steps": {
+      "started": "ಪ್ರಾರಂಭಿಸಿದವರು",
+      "alignment_completed": "ಆದ್ಯತೆ ಕಾರ್ಡ್ ಮುಗಿಸಿದವರು",
+      "outcome_viewed": "ಸಂಪಾದನೆ ಮಾಹಿತಿ ನೋಡಿದವರು",
+      "mood_post": "ನಂತರದ ಮನಸ್ಥಿತಿ",
+      "escalated": "ಸಲಹೆಗಾರರೊಂದಿಗೆ ಮಾತನಾಡಿದವರು"
+    }
   }
 }

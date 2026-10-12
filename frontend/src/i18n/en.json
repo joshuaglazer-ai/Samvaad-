@@ -279,6 +279,16 @@
     "resistanceShare": "Negative parent messages",
     "filterDistrict": "District",
     "filterIncome": "Income bracket",
-    "all": "All"
+    "all": "All",
+    "period": "Period",
+    "showTable": "Show table",
+    "showChart": "Show chart",
+    "steps": {
+      "started": "Started",
+      "alignment_completed": "Alignment cards done",
+      "outcome_viewed": "Saw earnings data",
+      "mood_post": "Mood after",
+      "escalated": "Talked to counsellor"
+    }
   }
 }
