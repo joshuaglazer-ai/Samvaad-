@@ -183,12 +183,7 @@ PROVIDER_GAPS = {("ev-service-technician", "Kalaburagi")}
 
 DISTRICT_KN = {"Bengaluru Urban": "ಬೆಂಗಳೂರು ನಗರ", "Mysuru": "ಮೈಸೂರು", "Kalaburagi": "ಕಲಬುರಗಿ", "Dharwad": "ಧಾರವಾಡ"}
 
-DISTRICT_COORDS = {
-    "Bengaluru Urban": (12.9716, 77.5946),
-    "Mysuru": (12.2958, 76.6394),
-    "Kalaburagi": (17.3297, 76.8343),
-    "Dharwad": (15.4589, 75.0078),
-}
+from app.config import DISTRICT_COORDS  # noqa: E402,F401  (kept here for older imports)
 
 # Costs: (fee_min, fee_max) per trade at state level. Wireman intentionally has no cost data (gap).
 FEES = {

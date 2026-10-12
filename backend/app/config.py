@@ -5,6 +5,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DISTRICTS = ["Bengaluru Urban", "Mysuru", "Kalaburagi", "Dharwad"]
 STATE = "Karnataka"
+DISTRICT_COORDS = {
+    "Bengaluru Urban": (12.9716, 77.5946),
+    "Mysuru": (12.2958, 76.6394),
+    "Kalaburagi": (17.3297, 76.8343),
+    "Dharwad": (15.4589, 75.0078),
+}
 SECTORS = ["Electrical", "Automotive", "Healthcare", "Green Energy"]
 LANGUAGES = ["en", "kn"]
 EDUCATION_LEVELS = ["class_8", "class_10", "class_12", "iti", "diploma", "graduate", "other"]
