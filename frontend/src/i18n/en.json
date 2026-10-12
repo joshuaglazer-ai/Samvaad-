@@ -4,7 +4,7 @@
     "tagline": "Guiding Families. Empowering Futures.",
     "disclaimer": "SAMVAAD offers guidance, not guarantees. The final decision is always yours.",
     "demoLabel": "Demo data — for testing only.",
-    "liteMode": "Lite mode",
+    "liteMode": "Lite",
     "liteOn": "Lite mode is on",
     "liteOff": "Lite mode is off",
     "language": "Language",
@@ -17,7 +17,11 @@
     "loading": "Loading…",
     "error": "Something went wrong. Please try again.",
     "home": "Home",
-    "offline": "We could not reach the server. Please check your connection."
+    "offline": "We could not reach the server. Please check your connection.",
+    "dark": "Dark",
+    "light": "Light",
+    "toDark": "Switch to dark mode",
+    "toLight": "Switch to light mode"
   },
   "landing": {
     "start": "Start together",

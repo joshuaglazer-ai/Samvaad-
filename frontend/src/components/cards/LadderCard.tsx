@@ -40,12 +40,12 @@ export default function LadderCard({ card }: { card: Card }) {
               <div className="relative w-14 shrink-0" aria-hidden="true">
                 <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   {i > 0 && (
-                    <m.line x1={xOf(i - 1)} y1="100" x2={xOf(i)} y2="50" stroke="#9277DB" strokeWidth="2"
+                    <m.line x1={xOf(i - 1)} y1="100" x2={xOf(i)} y2="50" className="stroke-lavender-500" strokeWidth="2"
                       strokeDasharray="5 5" vectorEffect="non-scaling-stroke"
                       initial={lite ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay, duration: 0.3 }} />
                   )}
                   {i < n - 1 && (
-                    <m.line x1={xOf(i)} y1="50" x2={xOf(i + 1)} y2="0" stroke="#9277DB" strokeWidth="2"
+                    <m.line x1={xOf(i)} y1="50" x2={xOf(i + 1)} y2="0" className="stroke-lavender-500" strokeWidth="2"
                       strokeDasharray="5 5" vectorEffect="non-scaling-stroke"
                       initial={lite ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: delay + 0.15, duration: 0.3 }} />
                   )}
@@ -57,12 +57,12 @@ export default function LadderCard({ card }: { card: Card }) {
                   initial={lite ? false : { scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay, type: "spring", stiffness: 260, damping: 16 }}
                 >
-                  {s.eligible && <circle cx="12" cy="12" r="11.5" fill="#F2CF6B" opacity="0.35" />}
-                  <path d={STAR} fill={s.eligible ? "#F2CF6B" : "#FFFFFF"} stroke="#56399F" strokeWidth="1.4" strokeLinejoin="round" />
+                  {s.eligible && <circle cx="12" cy="12" r="11.5" className="fill-star-400" opacity="0.35" />}
+                  <path d={STAR} className={`${s.eligible ? "fill-star-400" : "fill-white"} stroke-primary-700`} strokeWidth="1.4" strokeLinejoin="round" />
                 </m.svg>
               </div>
               <m.div
-                className={`my-1.5 flex-1 rounded-2xl px-3 py-2 ${s.eligible ? "bg-star-400/25 ring-2 ring-star-400" : "bg-white/80"}`}
+                className={`my-1.5 flex-1 rounded-2xl px-3 py-2 ${s.eligible ? "eligible-step ring-2 ring-star-400" : "bg-white/80"}`}
                 initial={lite ? false : { opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay }}
               >
                 <p className="flex items-center gap-1.5 text-base font-semibold leading-snug text-ink-900">

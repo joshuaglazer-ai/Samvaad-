@@ -40,7 +40,7 @@ export default function Summary() {
   const download = async () => {
     if (!cardRef.current) return;
     const { toPng } = await import("html-to-image");
-    const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: "#F8F5FF", filter: (n) => !(n as HTMLElement).dataset?.noexport });
+    const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: getComputedStyle(document.body).backgroundColor || "#F8F5FF", filter: (n) => !(n as HTMLElement).dataset?.noexport });
     const a = document.createElement("a");
     a.href = dataUrl;
     a.download = "samvaad-family-summary.png";

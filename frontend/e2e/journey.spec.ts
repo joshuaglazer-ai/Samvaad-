@@ -84,7 +84,7 @@ test("Lite mode renders no WebGL canvas", async ({ browser }) => {
   const ctx = await browser.newContext({ reducedMotion: "reduce" });
   const page = await ctx.newPage();
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /Lite mode/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /^Lite$/ })).toHaveAttribute("aria-pressed", "true");
   await page.waitForTimeout(800);
   expect(await page.locator("canvas").count()).toBe(0);
   await ctx.close();

@@ -8,10 +8,11 @@ import "leaflet/dist/leaflet.css";
 import Button from "../components/ui/Button";
 import Icon from "../components/ui/Icon";
 import PinGate from "../components/ui/PinGate";
+import { useAppState } from "../lib/state";
 import { StatusBadge } from "../components/cards/EvidenceBadge";
 import ChartFrame, { DataTable } from "../components/admin/ChartFrame";
 import { API_BASE, api, type DataStatus } from "../lib/api";
-import { ALIGN_COLOR, ALIGN_ORDER, AXIS_TEXT, CATEGORICAL, CONCERN_COLOR, CONCERN_ORDER, GRID, SEQUENTIAL, sequentialColor } from "../lib/viz";
+import { ALIGN_ORDER, CONCERN_ORDER, useViz } from "../lib/viz";
 
 // ------------------------------------------------------------------ response types
 interface Flags { includes_demo_data: boolean; includes_simulated_sessions: boolean; simulated_sessions: number; min_cell_size: number }
@@ -47,7 +48,6 @@ interface DataQuality {
 const DISTRICTS = ["Bengaluru Urban", "Mysuru", "Kalaburagi", "Dharwad"];
 const INCOME = ["<1.5L", "1.5-3L", "3-6L", ">6L", "prefer_not_to_say"];
 const pctOf = (r: Ratio) => (r.denominator ? `${Math.round((100 * r.numerator) / r.denominator)}%` : "—");
-const tooltipStyle = { borderRadius: 12, border: "1px solid #DED3F8", fontSize: 13, color: "#241B4B" };
 
 function Kpi({ icon, label, value, detail }: { icon: string; label: string; value: string; detail: string }) {
   return (
@@ -61,6 +61,11 @@ function Kpi({ icon, label, value, detail }: { icon: string; label: string; valu
 
 function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
   const { t } = useTranslation();
+  const viz = useViz();
+  const { lite } = useAppState();
+  const animate = !lite; // Lite mode: no chart animation either
+  const { concernColor: CONCERN_COLOR, alignColor: ALIGN_COLOR, sequential: SEQUENTIAL,
+    sequentialColor, grid: GRID, axis: AXIS_TEXT, tooltip: tooltipStyle } = viz;
   const [district, setDistrict] = useState("");
   const [income, setIncome] = useState("");
   const [period, setPeriod] = useState("all");
@@ -204,8 +209,8 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {resistance.districts.map((d) => (
                   <CircleMarker key={d.district} center={[d.lat, d.lng]} radius={10 + 22 * Math.sqrt(d.sessions / maxSessions)}
-                    pathOptions={{ color: "#ffffff", weight: 2, fillOpacity: 0.85,
-                      fillColor: d.suppressed || d.share == null ? "#c9c6d6" : sequentialColor(d.share, maxShare) }}>
+                    pathOptions={{ color: viz.gap, weight: 2, fillOpacity: 0.85,
+                      fillColor: d.suppressed || d.share == null ? viz.suppressed : sequentialColor(d.share, maxShare) }}>
                     <MapTooltip>
                       <strong>{t(`districts.${d.district}`)}</strong><br />
                       {d.suppressed ? tooFew : <>
@@ -273,10 +278,10 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
                   <CartesianGrid horizontal={false} stroke={GRID} />
                   <XAxis type="number" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
                   <YAxis type="category" dataKey="name" width={110} tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
-                  <Tooltip contentStyle={tooltipStyle}
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: GRID, opacity: 0.4 }}
                     formatter={(v: number, name: string, item) => [`${v}% (${(item.payload as Record<string, number>)[`${name}_n`]})`, concernLabel(name)]} />
                   {CONCERN_ORDER.map((c, i) => (
-                    <Bar key={c} dataKey={c} stackId="a" fill={CONCERN_COLOR[c]} stroke="#ffffff" strokeWidth={2}
+                    <Bar isAnimationActive={animate} key={c} dataKey={c} stackId="a" fill={CONCERN_COLOR[c]} stroke={viz.gap} strokeWidth={2}
                       radius={i === CONCERN_ORDER.length - 1 ? [0, 4, 4, 0] : 0} />
                   ))}
                 </BarChart>
@@ -302,10 +307,10 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
                 <CartesianGrid horizontal={false} stroke={GRID} />
                 <XAxis type="number" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow tickFormatter={(v: number) => `${Math.round(v)}%`} tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
                 <YAxis type="category" dataKey="name" width={110} tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
-                <Tooltip contentStyle={tooltipStyle}
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: GRID, opacity: 0.4 }}
                   formatter={(v: number, name: string, item) => [`${v}% (${(item.payload as Record<string, number>)[`${name}_n`]})`, t(`alignment.values.${name}`)]} />
                 {ALIGN_ORDER.map((v, i) => (
-                  <Bar key={v} dataKey={v} stackId="a" fill={ALIGN_COLOR[v]} stroke="#ffffff" strokeWidth={2}
+                  <Bar isAnimationActive={animate} key={v} dataKey={v} stackId="a" fill={ALIGN_COLOR[v]} stroke={viz.gap} strokeWidth={2}
                     radius={i === ALIGN_ORDER.length - 1 ? [0, 4, 4, 0] : 0} />
                 ))}
               </BarChart>
@@ -327,11 +332,11 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
                 <XAxis dataKey="turn" tickFormatter={(v) => (v === 5 ? "5+" : String(v))} tick={{ fill: AXIS_TEXT, fontSize: 12 }}
                   label={{ value: "Parent message #", position: "insideBottom", offset: -2, fill: AXIS_TEXT, fontSize: 12 }} height={36} />
                 <YAxis domain={[-2, 2]} ticks={[-2, -1, 0, 1, 2]} tick={{ fill: AXIS_TEXT, fontSize: 12 }} width={32} />
-                <ReferenceLine y={0} stroke="#9a96aa" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, _n, item) => [`${v} (n=${(item.payload as { messages: number }).messages})`, "Mean sentiment"]}
+                <ReferenceLine y={0} stroke={viz.zeroLine} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: GRID, opacity: 0.4 }} formatter={(v: number, _n, item) => [`${v} (n=${(item.payload as { messages: number }).messages})`, "Mean sentiment"]}
                   labelFormatter={(l) => `Parent message #${l === 5 ? "5+" : l}`} />
-                <Line type="monotone" dataKey="mean_sentiment" stroke={CATEGORICAL[0]} strokeWidth={2}
-                  dot={{ r: 4, fill: CATEGORICAL[0], stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Line isAnimationActive={animate} type="monotone" dataKey="mean_sentiment" stroke={viz.series1} strokeWidth={2}
+                  dot={{ r: 4, fill: viz.series1, stroke: viz.gap, strokeWidth: 2 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           }
@@ -344,16 +349,16 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
         <ChartFrame
           title={t("admin.selfMood")}
           subtitle="Families' own 1–5 rating before and after the conversation."
-          legend={[{ label: "Before", color: CATEGORICAL[0] }, { label: "After", color: CATEGORICAL[1] }]}
+          legend={[{ label: "Before", color: viz.series2 }, { label: "After", color: viz.series1 }]}
           chart={
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={moodRows.filter((r) => !r.suppressed)} margin={{ left: 0, right: 16, top: 8 }} barGap={2}>
                 <CartesianGrid stroke={GRID} vertical={false} />
                 <XAxis dataKey="who" tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
                 <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: AXIS_TEXT, fontSize: 12 }} width={28} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, name: string) => [v, name === "pre_mean" ? "Before" : "After"]} />
-                <Bar dataKey="pre_mean" fill={CATEGORICAL[0]} radius={[4, 4, 0, 0]} maxBarSize={48} />
-                <Bar dataKey="post_mean" fill={CATEGORICAL[1]} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: GRID, opacity: 0.4 }} formatter={(v: number, name: string) => [v, name === "pre_mean" ? "Before" : "After"]} />
+                <Bar isAnimationActive={animate} dataKey="pre_mean" fill={viz.series2} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <Bar isAnimationActive={animate} dataKey="post_mean" fill={viz.series1} radius={[4, 4, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           }
@@ -373,9 +378,9 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
                 layout="vertical" margin={{ left: 8, right: 40 }} barCategoryGap={8}>
                 <XAxis type="number" hide domain={[0, funnel.steps[0]?.denominator || 1]} />
                 <YAxis type="category" dataKey="label" width={150} tick={{ fill: AXIS_TEXT, fontSize: 12 }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, _n, item) => [`${v} / ${(item.payload as { denominator: number }).denominator} (${(item.payload as { pct: number }).pct}%)`, "Sessions"]} />
-                <Bar dataKey="sessions" radius={[0, 4, 4, 0]} label={{ position: "right", fill: AXIS_TEXT, fontSize: 12, formatter: (v: number) => v }}>
-                  {funnel.steps.map((s) => <Cell key={s.step} fill={s.step === "escalated" ? "#8f8aa6" : CATEGORICAL[0]} />)}
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: GRID, opacity: 0.4 }} formatter={(v: number, _n, item) => [`${v} / ${(item.payload as { denominator: number }).denominator} (${(item.payload as { pct: number }).pct}%)`, "Sessions"]} />
+                <Bar isAnimationActive={animate} dataKey="sessions" radius={[0, 4, 4, 0]} label={{ position: "right", fill: AXIS_TEXT, fontSize: 12, formatter: (v: number) => v }}>
+                  {funnel.steps.map((s) => <Cell key={s.step} fill={s.step === "escalated" ? viz.muted : viz.series1} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -385,7 +390,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
         />
 
         {/* Evidence Gap Radar */}
-        <section className="glass p-4">
+        <section className="glass min-w-0 p-4">
           <h2 className="flex items-center gap-2 text-lg font-bold text-ink-900"><Icon name="alert" className="text-primary-700" />{t("admin.evidenceGaps")}</h2>
           <p className="text-sm text-ink-600">Questions families asked that our data could not answer — where to collect data next.</p>
           <div className="mt-3 overflow-x-auto">

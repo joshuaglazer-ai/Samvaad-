@@ -8,15 +8,16 @@ const MOUTHS = [
   "M8.5 15.5c1.2 1 5.8 1 7 0", // 4 slight smile
   "M8 15c1.2 2.4 6.8 2.4 8 0", // 5 big smile
 ];
-const FILLS = ["#EFE9FD", "#EFE9FD", "#F8F5FF", "#FDF6DF", "#FBEFC5"];
+// Face fills come from CSS variables so they work in light and dark mode.
+const FILLS = ["var(--face-1)", "var(--face-1)", "var(--face-3)", "var(--face-4)", "var(--face-5)"];
 
 export function Face({ value, size = 44 }: { value: number; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" fill={FILLS[value - 1]} stroke="#56399F" strokeWidth="1.4" />
-      <circle cx="9" cy="10" r="1.1" fill="#241B4B" />
-      <circle cx="15" cy="10" r="1.1" fill="#241B4B" />
-      <path d={MOUTHS[value - 1]} fill="none" stroke="#241B4B" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" style={{ fill: FILLS[value - 1], stroke: "var(--face-line)" }} strokeWidth="1.4" />
+      <circle cx="9" cy="10" r="1.1" style={{ fill: "var(--face-ink)" }} />
+      <circle cx="15" cy="10" r="1.1" style={{ fill: "var(--face-ink)" }} />
+      <path d={MOUTHS[value - 1]} fill="none" style={{ stroke: "var(--face-ink)" }} strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

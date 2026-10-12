@@ -17,7 +17,8 @@ export default function ChartFrame({ title, subtitle, chart, table, legend, foot
   const { t } = useTranslation();
   const [asTable, setAsTable] = useState(false);
   return (
-    <section className="glass p-4">
+    // min-w-0: grid items default to min-width:auto, which lets a chart's first (small) measurement fix the column.
+    <section className="glass min-w-0 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-lg font-bold text-ink-900">{title}</h2>

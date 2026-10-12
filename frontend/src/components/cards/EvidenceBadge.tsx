@@ -3,10 +3,10 @@ import Icon from "../ui/Icon";
 import type { DataStatus, Evidence } from "../../lib/api";
 
 const STYLE: Record<DataStatus, { cls: string; icon: string }> = {
-  verified: { cls: "bg-success-600 text-white", icon: "shield" },
-  historical: { cls: "bg-warning-600 text-white", icon: "clock" },
-  demo: { cls: "bg-info-600 text-white", icon: "info" },
-  unavailable: { cls: "bg-ink-600 text-white", icon: "alert" },
+  verified: { cls: "badge-verified", icon: "shield" },
+  historical: { cls: "badge-historical", icon: "clock" },
+  demo: { cls: "badge-demo", icon: "info" },
+  unavailable: { cls: "badge-unavailable", icon: "alert" },
 };
 
 /** Data-status badge: colour + icon + text (never colour alone). */

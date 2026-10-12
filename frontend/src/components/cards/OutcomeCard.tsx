@@ -61,8 +61,8 @@ export default function OutcomeCard({ card }: { card: Card }) {
           <p className="text-sm font-semibold text-ink-600">{t("cards.placement")}</p>
           <div className="mt-1 flex items-center gap-3">
             <svg width="64" height="64" viewBox="0 0 36 36" role="img" aria-label={pct(d.placement_rate)}>
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="#EFE9FD" strokeWidth="5" />
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="#6B4FC4" strokeWidth="5" strokeLinecap="round"
+              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-lavender-200" strokeWidth="5" />
+              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-primary-600" strokeWidth="5" strokeLinecap="round"
                 strokeDasharray={`${(rate / 100) * 97.4} 97.4`} transform="rotate(-90 18 18)" />
             </svg>
             <p className="text-3xl font-extrabold text-ink-900">{pct(d.placement_rate)}</p>
@@ -79,7 +79,7 @@ export default function OutcomeCard({ card }: { card: Card }) {
           <p className="mt-1 text-3xl font-extrabold text-ink-900">
             {rupees(d.earnings_median)} <span className="text-base font-semibold text-ink-600">{t("cards.median")}</span>
           </p>
-          <div className="relative mt-3 h-3 rounded-full bg-gradient-to-r from-lavender-200 via-lavender-300 to-sky-200" aria-hidden="true">
+          <div className="relative mt-3 h-3 rounded-full bg-gradient-to-r from-lavender-200 via-lavender-300 to-lavender-500" aria-hidden="true">
             <span className="absolute -top-1 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white bg-star-400 shadow" style={{ left: `${pos}%` }} />
           </div>
           <div className="mt-1 flex justify-between text-sm text-ink-600">

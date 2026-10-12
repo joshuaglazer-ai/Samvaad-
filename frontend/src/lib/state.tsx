@@ -2,6 +2,27 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { initialLite, saveLite } from "./device";
 
 export type Speaker = "learner" | "parent" | "helper";
+export type Theme = "light" | "dark";
+
+const THEME_KEY = "samvaad.theme";
+
+function systemTheme(): Theme {
+  try {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+/** A saved manual choice wins; otherwise follow the system setting. */
+export function savedTheme(): Theme | null {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return v === "dark" || v === "light" ? v : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface Profile {
   language: "en" | "kn";
@@ -20,6 +41,8 @@ interface AppState {
   setProfile: (p: Partial<Profile>) => void;
   lite: boolean;
   setLite: (on: boolean) => void;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
   readAloud: boolean;
   setReadAloud: (on: boolean) => void;
   disclaimerSeen: boolean;
@@ -57,6 +80,28 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionIdState] = useState<string | null>(() => load("samvaad.session", null));
   const [profile, setProfileState] = useState<Profile>(() => load("samvaad.profile", emptyProfile));
   const [lite, setLiteState] = useState<boolean>(() => initialLite());
+  const [theme, setThemeState] = useState<Theme>(() => savedTheme() ?? systemTheme());
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#000000" : "#6B4FC4");
+  }, [theme]);
+
+  // Follow the system setting until the user picks a theme in the header.
+  useEffect(() => {
+    let mq: MediaQueryList | undefined;
+    try {
+      mq = window.matchMedia("(prefers-color-scheme: dark)");
+    } catch {
+      return;
+    }
+    const onChange = () => {
+      if (!savedTheme()) setThemeState(mq!.matches ? "dark" : "light");
+    };
+    mq.addEventListener?.("change", onChange);
+    return () => mq?.removeEventListener?.("change", onChange);
+  }, []);
   const [readAloud, setReadAloud] = useState<boolean>(() => load("samvaad.readAloud", true));
   const [disclaimerSeen, setDisclaimerSeen] = useState<boolean>(() => load("samvaad.disclaimer", false));
 
@@ -79,6 +124,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setLiteState(on);
     saveLite(on);
   }, []);
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch {
+      /* storage may be blocked; the choice lasts for this visit */
+    }
+  }, []);
   const setRead = useCallback((on: boolean) => {
     setReadAloud(on);
     store("samvaad.readAloud", on);
@@ -97,10 +150,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      sessionId, setSessionId, profile, setProfile, lite, setLite,
+      sessionId, setSessionId, profile, setProfile, lite, setLite, theme, setTheme,
       readAloud, setReadAloud: setRead, disclaimerSeen, markDisclaimerSeen, reset,
     }),
-    [sessionId, setSessionId, profile, setProfile, lite, setLite, readAloud, setRead, disclaimerSeen, markDisclaimerSeen, reset],
+    [sessionId, setSessionId, profile, setProfile, lite, setLite, theme, setTheme, readAloud, setRead, disclaimerSeen, markDisclaimerSeen, reset],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
