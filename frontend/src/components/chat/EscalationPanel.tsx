@@ -61,9 +61,18 @@ export default function EscalationPanel({ escalation, speaker, onBack }: Props) 
     try {
       const ws = new WebSocket(wsUrl(`/ws/escalation/${escalation.id}?role=family`));
       wsRef.current = ws;
+      // Catch up on anything sent between the first fetch and the socket opening.
+      ws.onopen = () => {
+        api.escalationMessages(escalation.id, lastId.current).then(addMsgs).catch(() => undefined);
+        api.escalationStatus(escalation.id).then(setInfo).catch(() => undefined);
+      };
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === "message") addMsgs([data.message]);
+        if (data.type === "message") {
+          addMsgs([data.message]);
+          // A counsellor writing means they have joined, even if the status event was missed.
+          if (data.message.role === "counsellor") setInfo((i) => (i.status === "pending" ? { ...i, status: "in_progress" } : i));
+        }
         if (data.type === "status") setInfo((i) => ({ ...i, status: data.status }));
       };
       ws.onerror = () => startPolling();

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from .. import models as m
 from ..auth import require_counsellor
 from ..config import get_settings
-from ..db import SessionLocal, get_db
+from ..db import get_db, get_session_factory
 from ..escalation import case_info, create_case, now, rooms
 from ..schemas import CallbackIn, CaseUpdate, CounsellorReply, EscalateIn
 from .session import message_out
@@ -121,7 +121,8 @@ def family_message(case_id: int, body: CounsellorReply, speaker: str = "parent",
 
 
 @router.websocket("/ws/escalation/{case_id}")
-async def live_chat(ws: WebSocket, case_id: int, role: str = Query("family"), pin: str | None = Query(None)):
+async def live_chat(ws: WebSocket, case_id: int, role: str = Query("family"), pin: str | None = Query(None),
+                    SessionLocal=Depends(get_session_factory)):
     """Family ↔ counsellor live chat. Counsellors must pass ?pin=; family connects with the case id."""
     if role == "counsellor":
         try:

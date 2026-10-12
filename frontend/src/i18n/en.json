@@ -252,7 +252,8 @@
     "trigger": "Reason",
     "status": "Status",
     "deletePhone": "Delete number",
-    "demoAuth": "Demo-grade PIN login. Not for production use."
+    "demoAuth": "Demo-grade PIN login. Not for production use.",
+    "live": "Live chat with the family"
   },
   "admin": {
     "title": "Admin dashboard",

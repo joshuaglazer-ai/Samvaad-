@@ -47,7 +47,7 @@ def client(db, SessionMaker):
     """FastAPI TestClient sharing the seeded in-memory database."""
     from fastapi.testclient import TestClient
 
-    from app.db import get_db
+    from app.db import get_db, get_session_factory
     from app.main import app
 
     def _get_db():
@@ -58,6 +58,7 @@ def client(db, SessionMaker):
             s.close()
 
     app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_session_factory] = lambda: SessionMaker
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

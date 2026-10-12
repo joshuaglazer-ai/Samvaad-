@@ -52,16 +52,19 @@ def main_concern(db: Session, s: m.SessionRow) -> str:
 def build_summary(db: Session, s: m.SessionRow, trigger: str) -> tuple[str, str]:
     """Three plain lines in English and Kannada: who/where/concern, what was answered, why escalated."""
     concern = main_concern(db, s)
-    shown: list[tuple[str, str]] = []
+    shown: list[tuple[str, str]] = []  # (card type, trade slug)
     for msg in db.scalars(select(m.Message).where(m.Message.session_id == s.id, m.Message.role == "assistant")):
         for c in msg.cards or []:
-            key = (c.get("type"), c.get("data", {}).get("trade_name", ""))
+            if c.get("data", {}).get("unavailable"):
+                continue
+            key = (c.get("type"), c.get("data", {}).get("trade_slug", ""))
             if key not in shown:
                 shown.append(key)
+    names = {t.slug: (t.name_en, t.name_kn) for t in db.scalars(select(m.Trade))}
     lang_en = "Kannada" if s.language == "kn" else "English"
     lang_kn = "ಕನ್ನಡ" if s.language == "kn" else "ಇಂಗ್ಲಿಷ್"
-    answered_en = "; ".join(f"{CARD_EN.get(t, t)} – {n}" for t, n in shown[:4]) or "nothing yet"
-    answered_kn = "; ".join(f"{CARD_KN.get(t, t)} – {n}" for t, n in shown[:4]) or "ಇನ್ನೂ ಏನೂ ಇಲ್ಲ"
+    answered_en = "; ".join(f"{CARD_EN.get(t, t)} – {names.get(n, (n, n))[0]}" for t, n in shown[:4]) or "nothing yet"
+    answered_kn = "; ".join(f"{CARD_KN.get(t, t)} – {names.get(n, (n, n))[1]}" for t, n in shown[:4]) or "ಇನ್ನೂ ಏನೂ ಇಲ್ಲ"
     why_en, why_kn = TRIGGER_TEXT.get(trigger, (trigger, trigger))
     en = (f"Language: {lang_en} · District: {s.district} · Main concern: {concern.replace('_', ' ')}\n"
           f"Answered so far: {answered_en}\n"
