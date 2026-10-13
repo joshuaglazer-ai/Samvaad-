@@ -223,7 +223,12 @@ def write_report(results: list[dict], mode: str, path: Path, aspirations: list[d
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=str(HERE / "results.md"))
+    ap.add_argument("--require-real", action="store_true",
+                    help="stop instead of falling back to mock mode when LLM_MODE/ANTHROPIC_API_KEY are not set")
     args = ap.parse_args()
+    if args.require_real and get_settings().use_mock_llm:
+        raise SystemExit("Real-API eval needs LLM_MODE=anthropic and ANTHROPIC_API_KEY in backend/.env (or the "
+                         "environment). Nothing was run.")
     spec = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))
     questions, aspirations = spec["questions"], spec.get("aspirations", [])
     llm = get_llm()

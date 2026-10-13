@@ -111,6 +111,10 @@ test once with a trace, so a flaky test is reported as "flaky" (traces in `front
 Latest eval (mock mode): **40/40** concern questions and **12/12** aspiration questions pass every check — see
 [backend/eval/results.md](backend/eval/results.md).
 
+To run the same eval against the real Claude API once a key is in `backend/.env`:
+`backend/eval/run_eval_real.ps1` (Windows) or `backend/eval/run_eval_real.sh` — it writes `eval/results_real.md` and
+does not touch the mock results. It refuses to run (and calls nothing) if no key is set. Real calls are billed.
+
 ## Architecture
 
 ```
