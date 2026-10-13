@@ -98,7 +98,11 @@ export default function Landing() {
           ))}
         </ul>
 
-        <nav className="mt-8 flex gap-3 text-sm" aria-label="Staff">
+        <Link to="/join" className="mt-5 flex min-h-12 items-center gap-2 rounded-2xl px-4 font-semibold text-primary-700 hover:bg-lavender-100">
+          <Icon name="phone" size={20} /> {t("family.joinLink")}
+        </Link>
+
+        <nav className="mt-6 flex gap-3 text-sm" aria-label="Staff">
           <Link to="/counsellor" className="flex min-h-12 items-center gap-1.5 rounded-xl px-3 font-semibold text-primary-700 hover:bg-lavender-100">
             <Icon name="chat" size={18} /> {t("landing.counsellor")}
           </Link>

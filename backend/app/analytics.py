@@ -4,6 +4,10 @@ Small-cell rule: any group based on fewer than MIN_CELL (5) sessions is suppress
 (`suppressed: true`, values null) — to avoid over-reading tiny samples and to protect privacy.
 Model-estimated sentiment (messages.sentiment, -2..2) and self-reported mood (sessions.mood_*, 1..5)
 are always reported separately.
+
+All parent data is SELF-IDENTIFIED (someone tapped "Parent" or joined as the parent). Sessions where the parent
+joined on their own phone (participation_mode = two_devices) are the strongest signal; the dashboard can filter
+by participation mode and labels parent metrics accordingly.
 """
 from __future__ import annotations
 
@@ -25,7 +29,8 @@ def min_cell() -> int:
 
 class Filters:
     def __init__(self, district: str | None = None, income_bracket: str | None = None, period: str | None = None,
-                 include_simulated: bool = True):
+                 include_simulated: bool = True, participation_mode: str | None = None):
+        self.participation_mode = participation_mode or None
         self.district = district or None
         self.income_bracket = income_bracket or None
         self.period = period or "all"
@@ -50,6 +55,8 @@ def sessions(db: Session, f: Filters) -> list[m.SessionRow]:
         q = q.where(m.SessionRow.income_bracket == f.income_bracket)
     if not f.include_simulated:
         q = q.where(m.SessionRow.simulated.is_(False))
+    if f.participation_mode:
+        q = q.where(m.SessionRow.participation_mode == f.participation_mode)
     rows = list(db.scalars(q))
     since = f.since()
     return [s for s in rows if not since or _aware(s.created_at) >= since]
@@ -83,7 +90,8 @@ def suppress(cell: dict, n_sessions: int) -> dict:
 def data_flags(db: Session, ss: list[m.SessionRow]) -> dict:
     demo = db.scalar(select(m.Outcome.id).where(m.Outcome.data_status == "demo").limit(1)) is not None
     return {"includes_demo_data": demo, "includes_simulated_sessions": any(s.simulated for s in ss),
-            "simulated_sessions": sum(1 for s in ss if s.simulated), "min_cell_size": min_cell()}
+            "simulated_sessions": sum(1 for s in ss if s.simulated), "min_cell_size": min_cell(),
+            "parent_data_note": "Self-identified parent responses"}
 
 
 # ---------------------------------------------------------------------------------------------- endpoints
@@ -107,6 +115,8 @@ def overview(db: Session, f: Filters) -> dict:
                                "n": len(shifts_l)},
         "evidence_coverage": {"numerator": found, "denominator": len(calls)},
         "guardrail": dict(statuses),
+        "participation_modes": {mode: sum(1 for s in ss if s.participation_mode == mode)
+                                for mode in ("together", "two_devices", "learner_only")},
         **data_flags(db, ss),
     }
 
@@ -149,7 +159,8 @@ def resistance_by_district(db: Session, f: Filters) -> dict:
         cell = {"negative_parent_messages": neg, "parent_messages": len(items),
                 "share": round(neg / len(items), 3) if items else None, "top_negative_concerns": [c for c, _ in top]}
         rows.append({"district": d, "lat": DISTRICT_COORDS[d][0], "lng": DISTRICT_COORDS[d][1], **suppress(cell, n_sess)})
-    return {"districts": rows, "measure": "model-estimated sentiment ≤ -1 on parent messages", **data_flags(db, ss)}
+    return {"districts": rows, "measure": "model-estimated sentiment ≤ -1 on self-identified parent messages",
+            **data_flags(db, ss)}
 
 
 def sentiment_shift(db: Session, f: Filters) -> dict:

@@ -182,7 +182,7 @@ def run_tool_loop(llm: BaseLLM, messages: list[dict], ctx: dict, context_text: s
 
 
 def handle_turn(db: Session, session_id: str, speaker: str, text: str, language: str,
-                llm: BaseLLM | None = None) -> dict[str, Any]:
+                llm: BaseLLM | None = None, device_id: str | None = None) -> dict[str, Any]:
     llm = llm or get_llm()
     s = db.get(m.SessionRow, session_id)
     if s is None:
@@ -192,7 +192,8 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     tag = tag_message(text, llm)
     user_msg = m.Message(session_id=s.id, role="user", speaker=speaker, text=text, language=language,
                          concern_category=tag.concern_category, sentiment=tag.sentiment,
-                         sentiment_confidence=tag.confidence, tool_calls=[], cards=[], guardrail_status="na")
+                         sentiment_confidence=tag.confidence, tool_calls=[], cards=[], guardrail_status="na",
+                         device_id=device_id)
     db.add(user_msg)
     db.flush()
 
@@ -253,7 +254,7 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     assistant = m.Message(session_id=s.id, role="assistant", speaker="bot", text=reply, language=language,
                           tool_calls=[{"name": n, "input": i, "found": o.get("found", o.get("escalated", False))}
                                       for n, o, i in outputs],
-                          cards=cards, guardrail_status=status)
+                          cards=cards, guardrail_status=status, device_id=device_id)
     db.add(assistant)
     db.flush()
 

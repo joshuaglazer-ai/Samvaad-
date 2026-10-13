@@ -129,8 +129,11 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
         lang = "kn" if rng.random() < p["kn"] else "en"
         li = 1 if lang == "kn" else 0
         concerns = list(dict.fromkeys(weighted(rng, p["concerns"]) for _ in range(rng.randint(1, 3))))
+        # Participation (demo assumption): most sit together, some parents join on their own phone,
+        # some learners come alone.
+        mode = rng.choices(["together", "two_devices", "learner_only"], weights=[6, 2, 2])[0]
         s = m.SessionRow(
-            language=lang, district=district,
+            participation_mode=mode, language=lang, district=district,
             income_bracket=weighted(rng, BRACKETS, INCOME[district]) if rng.random() < 0.85 else None,
             learner_education=weighted(rng, *EDU), learner_interests=rng.sample(INTERESTS, rng.randint(1, 2)),
             top_concerns=concerns, helper_mode=rng.random() < 0.15, consent_given=True, simulated=True,
@@ -139,8 +142,11 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
         db.flush()
         db.add(m.Event(session_id=s.id, event_type="session_started", payload={"language": lang, "district": district}))
 
-        # alignment (most families complete it)
-        if rng.random() < 0.78:
+        if mode == "two_devices":
+            s.parent_joined_at = s.created_at
+            s.parent_language = lang if rng.random() < 0.8 else ("en" if lang == "kn" else "kn")
+        # alignment (most families complete it; learner-only families cannot compare)
+        if mode != "learner_only" and rng.random() < 0.78:
             db.add(m.AlignmentResponse(session_id=s.id, respondent="learner", ranking=ranking(rng, LEARNER_BIAS)))
             if rng.random() < 0.92:
                 par = ranking(rng, PARENT_BIAS[district])
@@ -154,7 +160,7 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
 
         # self-reported mood before
         base = rng.choices([1, 2, 3, 4], weights=[3, 4, 3, 1] if p["neg"] > 0.4 else [1, 3, 4, 2])[0]
-        s.mood_pre_parent = base
+        s.mood_pre_parent = base if mode != "learner_only" else None
         s.mood_pre_learner = min(5, base + rng.choice([0, 1, 1, 2]))
         db.commit()
 
@@ -163,7 +169,7 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
             trade = "ev"  # EV interest where data is thin → shows up as fallbacks/gaps
         turns = rng.randint(2, 6)
         for i in range(turns):
-            speaker = "parent" if rng.random() < 0.6 else "learner"
+            speaker = "learner" if mode == "learner_only" else ("parent" if rng.random() < 0.6 else "learner")
             r = rng.random()
             if r < 0.06 and district in ("Kalaburagi", "Dharwad"):
                 text = rng.choice(SENSITIVE[li])
@@ -187,7 +193,7 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
         s = db.get(m.SessionRow, s.id)
         if rng.random() < 0.68:
             lift = rng.choices([-1, 0, 1, 2], weights=[1, 3, 5, 2])[0]
-            s.mood_post_parent = max(1, min(5, s.mood_pre_parent + lift))
+            s.mood_post_parent = max(1, min(5, s.mood_pre_parent + lift)) if s.mood_pre_parent else None
             s.mood_post_learner = max(1, min(5, s.mood_pre_learner + rng.choices([-1, 0, 1], weights=[1, 4, 4])[0]))
             s.ended_at = now()
             for who in ("learner", "parent"):
@@ -198,6 +204,8 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
         # back-date everything for this session across the last `days` days
         t0 = start + timedelta(seconds=rng.uniform(0, days * 86400))
         s.created_at = t0
+        if s.parent_joined_at:
+            s.parent_joined_at = t0 + timedelta(minutes=2)
         if s.ended_at:
             s.ended_at = t0 + timedelta(minutes=rng.randint(8, 25))
         for k, msg in enumerate(db.scalars(select(m.Message).where(m.Message.session_id == s.id).order_by(m.Message.id))):

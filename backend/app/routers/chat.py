@@ -11,6 +11,7 @@ router = APIRouter(prefix="/api", tags=["chat"])
 @router.post("/chat")
 def chat(body: ChatIn, db: Session = Depends(get_db)) -> dict:
     try:
-        return handle_turn(db, body.session_id, body.speaker, body.text.strip(), body.language)
+        return handle_turn(db, body.session_id, body.speaker, body.text.strip(), body.language,
+                           device_id=body.device_id)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc

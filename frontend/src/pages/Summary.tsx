@@ -13,7 +13,7 @@ import { useAppState } from "../lib/state";
 /** One-page Family Summary Card in the session language. No personal data: no names, no phone. */
 export default function Summary() {
   const { sessionId: param } = useParams();
-  const { sessionId: current, reset } = useAppState();
+  const { sessionId: current, reset, profile } = useAppState();
   const id = param ?? current;
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -92,6 +92,12 @@ export default function Summary() {
         {data.has_demo_data && (
           <p className="flex items-center gap-2 rounded-xl bg-info-600 px-3 py-2 font-semibold text-white">
             <Icon name="info" size={18} /> {t("app.demoLabel")}
+          </p>
+        )}
+
+        {profile.participation_mode === "learner_only" && (
+          <p data-noexport="1" className="flex items-start gap-2 rounded-xl bg-lavender-100 px-3 py-2 text-ink-900">
+            <Icon name="share" className="mt-0.5 shrink-0 text-primary-700" /> {t("family.learnerOnlyNote")}
           </p>
         )}
 

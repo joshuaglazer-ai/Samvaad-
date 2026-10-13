@@ -115,7 +115,6 @@
     "rank": "No. {{n}}",
     "reset": "Start again",
     "save": "Save my order",
-    "passTo": "Now pass the phone to the parent",
     "resultTitle": "What you both value",
     "sharedTop": "You both value {{value}}.",
     "different": "You see {{value}} differently — let's talk about that.",
@@ -295,5 +294,41 @@
       "mood_post": "Mood after",
       "escalated": "Talked to counsellor"
     }
+  },
+  "mode": {
+    "question": "How are you using SAMVAAD today?",
+    "together": "Together on this phone",
+    "togetherDesc": "Learner and parent sit together and answer side by side.",
+    "two_devices": "Parent joins on their own phone",
+    "two_devicesDesc": "The parent scans a code and answers on their own phone, in their own language.",
+    "learner_only": "Only the learner today",
+    "learner_onlyDesc": "You can share a summary with your parents later."
+  },
+  "family": {
+    "codeTitle": "Parent, join on your phone",
+    "codeHelp": "Scan this code, or open SAMVAAD and enter these 4 numbers.",
+    "waiting": "Waiting for the parent to join…",
+    "joined": "The parent has joined.",
+    "waitingCards": "Waiting for the parent to arrange their cards…",
+    "continueAlone": "Continue without waiting",
+    "joinTitle": "Join your family",
+    "enterCode": "Enter the 4-number family code",
+    "delete": "Delete",
+    "join": "Join",
+    "badCode": "That code did not work. Please check the 4 numbers.",
+    "chooseLang": "Which language do you prefer?",
+    "parentPrompt": "Parent, you can speak your answer.",
+    "learnerOnlyNote": "When your parents are with you, show them this Family Summary.",
+    "sitTogether": "Please sit together and arrange your cards side by side.",
+    "saveBoth": "Save both",
+    "hear": "Hear",
+    "joinLink": "Parent joining on own phone?"
+  },
+  "adminModes": {
+    "filter": "How families took part",
+    "together": "Together on one phone",
+    "two_devices": "Two phones",
+    "learner_only": "Learner only",
+    "selfIdentified": "Parent figures are self-identified responses. Two-phone sessions are the strongest signal."
   }
 }

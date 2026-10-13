@@ -24,8 +24,15 @@ export function savedTheme(): Theme | null {
   }
 }
 
+export type ParticipationMode = "together" | "two_devices" | "learner_only";
+/** Which family member this phone belongs to in a two-phone session. */
+export type DeviceRole = "learner" | "parent";
+
 export interface Profile {
   language: "en" | "kn";
+  participation_mode: ParticipationMode;
+  role: DeviceRole;
+  family_code?: string | null;
   district?: string;
   learner_education?: string;
   learner_interests: string[];
@@ -52,6 +59,9 @@ interface AppState {
 
 const emptyProfile: Profile = {
   language: "en",
+  participation_mode: "together",
+  role: "learner",
+  family_code: null,
   learner_interests: [],
   top_concerns: [],
   income_bracket: null,
@@ -78,7 +88,7 @@ function store(key: string, value: unknown) {
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionIdState] = useState<string | null>(() => load("samvaad.session", null));
-  const [profile, setProfileState] = useState<Profile>(() => load("samvaad.profile", emptyProfile));
+  const [profile, setProfileState] = useState<Profile>(() => ({ ...emptyProfile, ...load("samvaad.profile", emptyProfile) }));
   const [lite, setLiteState] = useState<boolean>(() => initialLite());
   const [theme, setThemeState] = useState<Theme>(() => savedTheme() ?? systemTheme());
 

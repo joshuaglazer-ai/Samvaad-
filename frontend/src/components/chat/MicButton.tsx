@@ -10,10 +10,12 @@ interface Props {
   lang: VoiceLang;
   onResult: (text: string) => void;
   disabled?: boolean;
+  /** Draws attention to the mic (e.g. on the parent's turn). */
+  highlight?: boolean;
 }
 
 /** Big mic button. Shows interim text while listening; stops on silence. Hidden where unsupported. */
-export default function MicButton({ lang, onResult, disabled }: Props) {
+export default function MicButton({ lang, onResult, disabled, highlight }: Props) {
   const { t } = useTranslation();
   const { sessionId, lite } = useAppState();
   const [listening, setListening] = useState(false);
@@ -60,7 +62,7 @@ export default function MicButton({ lang, onResult, disabled }: Props) {
         transition={listening ? { repeat: Infinity, duration: 1.4 } : undefined}
         className={`flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-white disabled:opacity-50 ${
           listening ? "bg-primary-700" : "bg-primary-600 hover:bg-primary-700"
-        }`}
+        } ${highlight && !listening ? "ring-4 ring-star-400 ring-offset-2 ring-offset-white" : ""}`}
       >
         <Icon name={listening ? "stop" : "mic"} size={24} />
         <span className="text-base font-semibold">{listening ? t("chat.stop") : t("chat.mic")}</span>

@@ -14,7 +14,11 @@ export default function Mood() {
   const isPost = phase === "post";
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { sessionId, readAloud } = useAppState();
+  const { sessionId, readAloud, profile } = useAppState();
+  // Each phone asks only the people using it: together → both; learner-only / learner's phone → learner;
+  // parent's own phone → parent.
+  const askLearner = profile.role !== "parent";
+  const askParent = profile.role === "parent" || profile.participation_mode === "together";
   const { speak, stop, speakingId } = useSpeak();
   const [learner, setLearner] = useState<number | null>(null);
   const [parent, setParent] = useState<number | null>(null);
@@ -48,8 +52,8 @@ export default function Mood() {
         <h1 className={`text-2xl font-bold text-ink-900 ${speakingId === "mood" ? "reading-highlight" : ""}`}>{title}</h1>
         <ReadAloud speaking={speakingId === "mood"} onSpeak={() => speak(title, "mood")} onStop={stop} compact />
       </div>
-      <MoodCheck label={t("mood.learner")} value={learner} onChange={setLearner} />
-      <MoodCheck label={t("mood.parent")} value={parent} onChange={setParent} />
+      {askLearner && <MoodCheck label={t("mood.learner")} value={learner} onChange={setLearner} />}
+      {askParent && <MoodCheck label={t("mood.parent")} value={parent} onChange={setParent} />}
       <div className="flex justify-between gap-3">
         <Button variant="ghost" onClick={() => navigate(isPost ? `/summary/${sessionId}` : "/chat")}>{t("app.skip")}</Button>
         <Button size="lg" iconRight="arrowRight" disabled={(!learner && !parent) || busy} onClick={next}>{t("mood.continue")}</Button>

@@ -21,6 +21,7 @@ interface Overview extends Flags {
   sessions: number; open_cases: number; cases: number; escalation_rate: Ratio;
   mood_shift_parent: { mean: number | null; n: number }; mood_shift_learner: { mean: number | null; n: number };
   evidence_coverage: Ratio; guardrail: Record<string, number>;
+  participation_modes: Record<"together" | "two_devices" | "learner_only", number>;
 }
 interface Suppressible { sessions: number; suppressed: boolean }
 interface ResistanceRow extends Suppressible {
@@ -69,6 +70,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
   const [district, setDistrict] = useState("");
   const [income, setIncome] = useState("");
   const [period, setPeriod] = useState("all");
+  const [mode, setMode] = useState("");
   const [concernView, setConcernView] = useState<"district" | "income">("district");
   const [data, setData] = useState<{
     overview: Overview; resistance: { districts: ResistanceRow[] }; concerns: Concerns; sentiment: Sentiment;
@@ -82,9 +84,10 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
     if (district) p.set("district", district);
     if (income) p.set("income_bracket", income);
     if (period !== "all") p.set("period", period);
+    if (mode) p.set("participation_mode", mode);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [district, income, period]);
+  }, [district, income, period, mode]);
 
   const load = useCallback(async () => {
     try {
@@ -173,6 +176,15 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
             {INCOME.map((b) => <option key={b} value={b}>{t(`income.${b}`)}</option>)}
           </select>
         </label>
+        <label className="text-sm font-semibold text-ink-900">
+          {t("adminModes.filter")}
+          <select value={mode} onChange={(e) => setMode(e.target.value)} className="mt-1 block min-h-12 rounded-xl border border-lavender-200 bg-white px-3 text-base">
+            <option value="">{t("admin.all")}</option>
+            {(["together", "two_devices", "learner_only"] as const).map((md) => (
+              <option key={md} value={md}>{t(`adminModes.${md}`)} ({o.participation_modes?.[md] ?? 0})</option>
+            ))}
+          </select>
+        </label>
         <div className="text-sm font-semibold text-ink-900">
           {t("admin.period")}
           <div className="mt-1 flex rounded-xl border border-lavender-200 bg-white p-0.5" role="radiogroup" aria-label={t("admin.period")}>
@@ -254,7 +266,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
         table={<DataTable head={["District", "Negative parent msgs", "Parent msgs", "Share", "Sessions", "Top worries"]}
           rows={resistance.districts.map((d) => [t(`districts.${d.district}`), d.negative_parent_messages, d.parent_messages,
             d.suppressed ? tooFew : `${Math.round((d.share ?? 0) * 100)}%`, d.sessions, (d.top_negative_concerns ?? []).map(concernLabel).join(", ")])} />}
-        footnote={`Cells with fewer than ${o.min_cell_size} sessions are shown as "${tooFew}".`}
+        footnote={`${t("adminModes.selfIdentified")} Cells with fewer than ${o.min_cell_size} sessions are shown as "${tooFew}".`}
       />
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -342,7 +354,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
           }
           table={<DataTable head={["Parent message #", "Mean sentiment", "Messages", "Sessions"]}
             rows={sentiment.model_sentiment_by_parent_turn.map((x) => [x.turn === 5 ? "5+" : x.turn, x.suppressed ? tooFew : x.mean_sentiment, x.messages, x.sessions])} />}
-          footnote="Model estimate from message text — not the family's own rating."
+          footnote={`Model estimate from message text — not the family's own rating. ${t("adminModes.selfIdentified")}`}
         />
 
         {/* Self-reported mood — separate chart */}

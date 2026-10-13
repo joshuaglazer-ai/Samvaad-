@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(session.router)
+app.include_router(session.join_router)
 app.include_router(chat.router)
 app.include_router(data.router)
 app.include_router(escalation.router)

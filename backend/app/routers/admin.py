@@ -10,10 +10,12 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 def filters(district: str | None = None, income_bracket: str | None = None, period: str | None = None,
-            include_simulated: bool = True) -> a.Filters:
+            include_simulated: bool = True, participation_mode: str | None = None) -> a.Filters:
     if period not in (None, "", "all", "7d", "30d", "90d"):
         raise HTTPException(422, "period must be one of all, 7d, 30d, 90d")
-    return a.Filters(district, income_bracket, period, include_simulated)
+    if participation_mode not in (None, "", "together", "two_devices", "learner_only"):
+        raise HTTPException(422, "participation_mode must be together, two_devices or learner_only")
+    return a.Filters(district, income_bracket, period, include_simulated, participation_mode)
 
 
 @router.get("/overview")

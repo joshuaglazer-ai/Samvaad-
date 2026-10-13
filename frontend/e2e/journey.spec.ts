@@ -13,12 +13,14 @@ async function journey(page: Page, lang: "en" | "kn") {
         concern: "Income", next: "Next", skip: "Skip", helperNo: "No, we are using it ourselves", finish: "Continue",
         save: "Save my order", cont: "Continue to the conversation", face: "Hopeful", moodCont: "Continue",
         starter: "How much can I earn?", ladder: "What are the next steps after training?", done: "Finish",
-        demo: "Demo data — for testing only.", summary: "Family Summary", values: ["Earning soon", "Staying near home", "Respect in the community", "Studying further", "Safety"] }
+        demo: "Demo data — for testing only.", summary: "Family Summary", together: "Together on this phone",
+        learner: "Learner", parent: "Parent", saveBoth: "Save both", values: ["Earning soon", "Staying near home", "Respect in the community", "Studying further", "Safety"] }
     : { start: /ಒಟ್ಟಿಗೆ ಪ್ರಾರಂಭಿಸಿ/, agree: "ಒಪ್ಪುತ್ತೇನೆ, ಮುಂದುವರಿಸಿ", district: "ಮೈಸೂರು", edu: "10ನೇ ತರಗತಿ (SSLC)", interest: "ವಿದ್ಯುತ್",
         concern: "ಆದಾಯ", next: "ಮುಂದೆ", skip: "ಬಿಟ್ಟುಬಿಡಿ", helperNo: "ಇಲ್ಲ, ನಾವೇ ಬಳಸುತ್ತಿದ್ದೇವೆ", finish: "ಮುಂದುವರಿಸಿ",
         save: "ನನ್ನ ಕ್ರಮ ಉಳಿಸಿ", cont: "ಮಾತುಕತೆಗೆ ಮುಂದುವರಿಸಿ", face: "ಭರವಸೆ ಇದೆ", moodCont: "ಮುಂದುವರಿಸಿ",
         starter: "ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?", ladder: "ತರಬೇತಿಯ ನಂತರ ಮುಂದಿನ ಹಂತಗಳೇನು?", done: "ಮುಗಿಸಿ",
-        demo: "ಡೆಮೊ ಮಾಹಿತಿ — ಪರೀಕ್ಷೆಗೆ ಮಾತ್ರ.", summary: "ಕುಟುಂಬದ ಸಾರಾಂಶ", values: ["ಬೇಗ ಸಂಪಾದನೆ", "ಮನೆಯ ಹತ್ತಿರ ಇರುವುದು", "ಊರಿನಲ್ಲಿ ಗೌರವ", "ಮುಂದೆ ಓದುವುದು", "ಸುರಕ್ಷತೆ"] };
+        demo: "ಡೆಮೊ ಮಾಹಿತಿ — ಪರೀಕ್ಷೆಗೆ ಮಾತ್ರ.", summary: "ಕುಟುಂಬದ ಸಾರಾಂಶ", together: "ಈ ಫೋನ್‌ನಲ್ಲಿ ಒಟ್ಟಿಗೆ",
+        learner: "ಕಲಿಯುವವರು", parent: "ಪೋಷಕರು", saveBoth: "ಎರಡನ್ನೂ ಉಳಿಸಿ", values: ["ಬೇಗ ಸಂಪಾದನೆ", "ಮನೆಯ ಹತ್ತಿರ ಇರುವುದು", "ಊರಿನಲ್ಲಿ ಗೌರವ", "ಮುಂದೆ ಓದುವುದು", "ಸುರಕ್ಷತೆ"] };
 
   await page.addInitScript(() => {
     sessionStorage.setItem("samvaad.readAloud", "false");
@@ -32,6 +34,7 @@ async function journey(page: Page, lang: "en" | "kn") {
   // onboarding
   await page.getByRole("radio", { name: lang === "kn" ? "ಕನ್ನಡ" : "English" }).click();
   await page.getByRole("button", { name: L.agree }).click();
+  await page.getByRole("radio", { name: new RegExp(L.together) }).click();
   await page.getByRole("radio", { name: L.district }).click();
   await page.getByRole("radio", { name: L.edu }).click();
   await page.getByRole("checkbox", { name: L.interest }).click();
@@ -43,13 +46,12 @@ async function journey(page: Page, lang: "en" | "kn") {
   await page.getByRole("radio", { name: L.helperNo }).click();
   await page.getByRole("button", { name: L.finish }).click();
 
-  // alignment: learner then parent, tap-to-order
-  const turns = lang === "en" ? ["Learner's turn", "Parent's turn"] : ["ಕಲಿಯುವವರ ಸರದಿ", "ಪೋಷಕರ ಸರದಿ"];
-  for (const [i, order] of [L.values, [...L.values].reverse()].entries()) {
-    await expect(page.getByRole("heading", { name: turns[i] })).toBeVisible();
-    for (const v of order) await page.getByRole("checkbox", { name: v }).click();
-    await page.getByRole("button", { name: L.save }).click();
+  // alignment "together": both rows on one screen, saved together (no passing the phone)
+  for (const [who, order] of [[L.learner, L.values], [L.parent, [...L.values].reverse()]] as const) {
+    const row = page.getByRole("region", { name: who, exact: true });
+    for (const v of order) await row.getByRole("checkbox", { name: v }).click();
   }
+  await page.getByRole("button", { name: L.saveBoth }).click();
   await shot(page, `${lang}-03-alignment`);
   await page.getByRole("button", { name: L.cont }).click();
 

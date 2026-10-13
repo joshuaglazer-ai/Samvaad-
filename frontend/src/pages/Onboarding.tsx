@@ -8,7 +8,7 @@ import ProgressDots from "../components/ui/ProgressDots";
 import Toggle from "../components/ui/Toggle";
 import ReadAloud, { VoiceMissingNotice } from "../components/ui/ReadAloud";
 import { api } from "../lib/api";
-import { useAppState } from "../lib/state";
+import { useAppState, type ParticipationMode } from "../lib/state";
 import { useSpeak } from "../lib/useSpeak";
 
 const SkyScene = lazy(() => import("../components/three/SkyScene"));
@@ -28,8 +28,9 @@ export const CONCERN_ICONS: Record<string, string> = {
 };
 const DEFAULT_INCOME = ["<1.5L", "1.5-3L", "3-6L", ">6L", "prefer_not_to_say"];
 
-type StepKey = "language" | "consent" | "district" | "education" | "interests" | "concerns" | "income" | "helper";
-const STEPS: StepKey[] = ["language", "consent", "district", "education", "interests", "concerns", "income", "helper"];
+type StepKey = "language" | "consent" | "mode" | "district" | "education" | "interests" | "concerns" | "income" | "helper";
+const STEPS: StepKey[] = ["language", "consent", "mode", "district", "education", "interests", "concerns", "income", "helper"];
+const MODES: [ParticipationMode, string][] = [["together", "users"], ["two_devices", "phone"], ["learner_only", "learner"]];
 
 export default function Onboarding() {
   const { t, i18n } = useTranslation();
@@ -51,6 +52,7 @@ export default function Onboarding() {
     switch (key) {
       case "language": return t("onboarding.language");
       case "consent": return `${t("consent.title")}. ${t("consent.text")}`;
+      case "mode": return t("mode.question");
       case "district": return t("onboarding.district");
       case "education": return t("onboarding.education");
       case "interests": return t("onboarding.interests");
@@ -84,7 +86,7 @@ export default function Onboarding() {
     setSubmitting(true);
     setError(null);
     try {
-      const { session_id } = await api.createSession({
+      const { session_id, family_code } = await api.createSession({
         language: profile.language,
         district: profile.district!,
         learner_education: profile.learner_education!,
@@ -93,7 +95,9 @@ export default function Onboarding() {
         income_bracket: profile.income_bracket ?? null,
         helper_mode: profile.helper_mode,
         consent_given: consent,
+        participation_mode: profile.participation_mode,
       });
+      setProfile({ role: "learner", family_code });
       setSessionId(session_id);
       navigate("/alignment");
     } catch {
@@ -152,6 +156,15 @@ export default function Onboarding() {
                 <Button className="mt-5 w-full" size="lg" icon="check" onClick={() => { setConsent(true); setStep(step + 1); }}>
                   {t("consent.agree")}
                 </Button>
+              </div>
+            )}
+
+            {key === "mode" && (
+              <div className="grid gap-3" role="radiogroup" aria-label={question}>
+                {MODES.map(([mode, icon]) => (
+                  <IconCard key={mode} icon={icon} label={t(`mode.${mode}`)} description={t(`mode.${mode}Desc`)}
+                    selected={profile.participation_mode === mode} onClick={() => { setProfile({ participation_mode: mode }); autoNext(); }} />
+                ))}
               </div>
             )}
 

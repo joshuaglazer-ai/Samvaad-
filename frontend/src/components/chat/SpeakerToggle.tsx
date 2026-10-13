@@ -5,7 +5,7 @@ import type { Speaker } from "../../lib/state";
 interface Props {
   value: Speaker;
   onChange: (s: Speaker) => void;
-  helperMode: boolean;
+  options: Speaker[];
 }
 
 const AVATAR: Record<Speaker, { icon: string; bg: string }> = {
@@ -15,9 +15,8 @@ const AVATAR: Record<Speaker, { icon: string; bg: string }> = {
 };
 
 /** Large avatars so learner and parent can take turns on one phone. */
-export default function SpeakerToggle({ value, onChange, helperMode }: Props) {
+export default function SpeakerToggle({ value, onChange, options }: Props) {
   const { t } = useTranslation();
-  const options: Speaker[] = helperMode ? ["learner", "parent", "helper"] : ["learner", "parent"];
   return (
     <div role="radiogroup" aria-label={t("chat.whoIsSpeaking")} className="flex flex-wrap items-center gap-2">
       <span className="mr-1 text-sm font-semibold text-ink-600">{t("chat.whoIsSpeaking")}</span>

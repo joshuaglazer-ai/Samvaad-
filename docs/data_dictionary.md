@@ -63,15 +63,19 @@ All monetary values are Indian Rupees (INR). Earnings are stored per `earnings_b
 ### sessions
 Random UUID `id`; **no names**. `language`, `district`, `income_bracket` (optional), `learner_education`,
 `learner_interests` (JSON), `top_concerns` (JSON), self-reported moods `mood_pre/post_learner/parent` (1–5),
-`helper_mode`, `consent_given`, `created_at`, `ended_at`, `escalated`, `simulated` (true for generated dashboard data).
+`helper_mode`, `consent_given`, `created_at`, `ended_at`, `escalated`, `simulated` (true for generated dashboard data),
+`participation_mode` (`together` | `two_devices` | `learner_only`), `family_code` (4 digits, expires after 2 hours),
+`family_code_expires_at`, `parent_joined_at`, `parent_language`.
+**All parent data is self-identified**; `two_devices` sessions (parent joined on their own phone) are the strongest signal.
 
 ### messages
 `session_id, role (user|assistant|counsellor), speaker (learner|parent|helper|bot|counsellor), text, language,
 concern_category, sentiment (-2..2, model-estimated), sentiment_confidence (0..1), tool_calls (JSON),
-cards (JSON shown with the reply), guardrail_status (pass|regenerated|fallback|na), created_at`.
+cards (JSON shown with the reply), guardrail_status (pass|regenerated|fallback|na), device_id (random per-phone id,
+no personal data), live (counsellor-room message), created_at`.
 
 ### alignment_responses
-`session_id, respondent (learner|parent), ranking` (JSON list of the 5 values, most important first:
+`session_id, respondent (learner|parent), device_id, ranking` (JSON list of the 5 values, most important first:
 `earning_soon, near_home, respect, study_further, safety`).
 
 ### evidence_gaps

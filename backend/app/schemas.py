@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field, field_validator
 from .config import CONCERN_CATEGORIES, DISTRICTS, EDUCATION_LEVELS, get_settings
 
 Lang = Literal["en", "kn"]
+Mode = Literal["together", "two_devices", "learner_only"]
+
+
+def DeviceId():  # noqa: N802 - a fresh Field per model; a random id per phone, never personal data
+    return Field(default=None, max_length=40, pattern=r"^[A-Za-z0-9-]*$")
 
 
 class SessionCreate(BaseModel):
@@ -16,6 +21,8 @@ class SessionCreate(BaseModel):
     income_bracket: str | None = None
     helper_mode: bool = False
     consent_given: bool
+    participation_mode: Mode = "together"
+    device_id: str | None = DeviceId()
 
     @field_validator("district")
     @classmethod
@@ -56,11 +63,19 @@ class MoodIn(BaseModel):
     respondent: Literal["learner", "parent"]
     phase: Literal["pre", "post"]
     value: int = Field(ge=1, le=5)
+    device_id: str | None = DeviceId()
 
 
 class AlignmentIn(BaseModel):
     respondent: Literal["learner", "parent"]
     ranking: list[str]
+    device_id: str | None = DeviceId()
+
+
+class JoinIn(BaseModel):
+    code: str = Field(pattern=r"^\d{4}$")
+    language: Lang = "en"
+    device_id: str | None = DeviceId()
 
 
 class ChatIn(BaseModel):
@@ -68,6 +83,7 @@ class ChatIn(BaseModel):
     speaker: Literal["learner", "parent", "helper"]
     text: str = Field(min_length=1, max_length=1000)
     language: Lang = "en"
+    device_id: str | None = DeviceId()
 
 
 class EventIn(BaseModel):

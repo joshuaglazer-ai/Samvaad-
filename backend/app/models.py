@@ -139,6 +139,13 @@ class SessionRow(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     escalated: Mapped[bool] = mapped_column(Boolean, default=False)
     simulated: Mapped[bool] = mapped_column(Boolean, default=False)
+    # How the family took part (Update 2): together | two_devices | learner_only. All parent data is
+    # self-identified; two_devices sessions are the strongest signal that the parent really answered.
+    participation_mode: Mapped[str] = mapped_column(String(20), default="together", server_default="together", index=True)
+    family_code: Mapped[str | None] = mapped_column(String(4), index=True)
+    family_code_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    parent_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    parent_language: Mapped[str | None] = mapped_column(String(5))
 
 
 class Message(Base):
@@ -155,6 +162,8 @@ class Message(Base):
     tool_calls: Mapped[list] = mapped_column(JSON, default=list)
     cards: Mapped[list] = mapped_column(JSON, default=list)
     guardrail_status: Mapped[str] = mapped_column(String(12), default="na")  # pass|regenerated|fallback|na
+    # Random per-device id (no personal data) so two-device sessions can tell the phones apart.
+    device_id: Mapped[str | None] = mapped_column(String(40))
     # True for messages exchanged in the live counsellor room (kept out of the LLM history).
     live: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -166,6 +175,7 @@ class AlignmentResponse(Base):
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
     respondent: Mapped[str] = mapped_column(String(10))  # learner | parent
     ranking: Mapped[list] = mapped_column(JSON)
+    device_id: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 

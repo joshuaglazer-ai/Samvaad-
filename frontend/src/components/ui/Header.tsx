@@ -6,14 +6,15 @@ import { api } from "../../lib/api";
 
 export default function Header() {
   const { t, i18n } = useTranslation();
-  const { lite, setLite, theme, setTheme, sessionId, setProfile } = useAppState();
+  const { lite, setLite, theme, setTheme, sessionId, profile, setProfile } = useAppState();
 
   const switchLang = () => {
     const next = i18n.language === "kn" ? "en" : "kn";
     i18n.changeLanguage(next);
     setProfile({ language: next });
-    // Switching language keeps the same session.
-    if (sessionId) api.updateSession(sessionId, { language: next }).catch(() => undefined);
+    // Switching language keeps the same session. A parent's own phone keeps its own language (each phone's
+    // messages carry their language), so only the learner's phone updates the session language.
+    if (sessionId && profile.role !== "parent") api.updateSession(sessionId, { language: next }).catch(() => undefined);
   };
 
   return (

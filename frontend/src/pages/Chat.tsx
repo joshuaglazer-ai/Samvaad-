@@ -13,6 +13,7 @@ import TypingStars from "../components/chat/TypingStars";
 import EscalationPanel from "../components/chat/EscalationPanel";
 import { api, type EscalationInfo } from "../lib/api";
 import { useAppState, type Speaker } from "../lib/state";
+import { getDeviceId } from "../lib/deviceId";
 import { useSpeak } from "../lib/useSpeak";
 
 export default function Chat() {
@@ -21,7 +22,13 @@ export default function Chat() {
   const { sessionId, profile, readAloud, setReadAloud, disclaimerSeen, markDisclaimerSeen } = useAppState();
   const { speak, stop, speakingId, missingVoice, lang } = useSpeak();
   const [items, setItems] = useState<ChatItem[]>([]);
-  const [speaker, setSpeaker] = useState<Speaker>("parent");
+  // Who can speak on this phone depends on how the family is taking part.
+  const speakers: Speaker[] = profile.role === "parent"
+    ? ["parent"]
+    : profile.participation_mode === "together"
+      ? (profile.helper_mode ? ["learner", "parent", "helper"] : ["learner", "parent"])
+      : (profile.helper_mode ? ["learner", "helper"] : ["learner"]);
+  const [speaker, setSpeaker] = useState<Speaker>(speakers.includes("parent") ? "parent" : "learner");
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [quick, setQuick] = useState<string[]>([]);
@@ -46,6 +53,23 @@ export default function Chat() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [items, busy]);
+
+  // Two phones share one conversation: pick up the other phone's messages every few seconds.
+  useEffect(() => {
+    if (!sessionId || profile.participation_mode !== "two_devices") return;
+    const me = getDeviceId();
+    const id = window.setInterval(() => {
+      if (busy) return;
+      api.transcript(sessionId).then((rows) => {
+        setItems((cur) => {
+          const known = new Set(cur.map((x) => x.id));
+          const fresh = rows.filter((r) => r.device_id !== me && !r.device_id?.startsWith("live") && !known.has(String(r.id)));
+          return fresh.length ? [...cur, ...fresh.map((r) => ({ id: String(r.id), role: r.role, speaker: r.speaker, text: r.text, cards: r.cards ?? [] }))] : cur;
+        });
+      }).catch(() => undefined);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [sessionId, profile.participation_mode, busy]);
 
   const greeting = `${t("landing.greeting")} ${disclaimerSeen ? "" : t("app.disclaimer")}`.trim();
   useEffect(() => {
@@ -103,7 +127,7 @@ export default function Chat() {
   return (
     <section className="mt-1 flex flex-col gap-3">
       <div className="glass flex flex-wrap items-center justify-between gap-2 p-3">
-        <SpeakerToggle value={speaker} onChange={setSpeaker} helperMode={profile.helper_mode} />
+        <SpeakerToggle value={speaker} onChange={setSpeaker} options={speakers} />
         <div className="flex flex-wrap items-center gap-1">
           <Toggle checked={readAloud} onChange={setReadAloud} label={t("chat.autoRead")} icon="speaker" />
           <Button variant="ghost" iconRight="arrowRight" onClick={() => navigate("/mood/post")}>{t("chat.finish")}</Button>
@@ -115,6 +139,11 @@ export default function Chat() {
         </p>
       )}
       {missingVoice && <VoiceMissingNotice />}
+      {speaker === "parent" && (
+        <p className="flex items-center gap-2 rounded-2xl bg-star-400/25 px-3 py-2 text-base font-semibold text-ink-900">
+          <Icon name="mic" className="shrink-0 text-primary-700" /> {t("family.parentPrompt")}
+        </p>
+      )}
 
       <ul className="flex flex-col gap-4 py-2" aria-live="polite">
         <MessageBubble
@@ -144,7 +173,7 @@ export default function Chat() {
             <Button type="submit" icon="send" disabled={busy || !draft.trim()}>{t("chat.send")}</Button>
           </form>
           <div className="flex flex-wrap items-start gap-2">
-            <MicButton lang={lang} onResult={send} disabled={busy} />
+            <MicButton lang={lang} onResult={send} disabled={busy} highlight={speaker === "parent"} />
             <Button variant="secondary" icon="chat" onClick={talkToCounsellor}>{t("chat.talkToCounsellor")}</Button>
           </div>
         </div>

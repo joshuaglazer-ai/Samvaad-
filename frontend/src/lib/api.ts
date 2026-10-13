@@ -1,4 +1,6 @@
 /** Typed client for the SAMVAAD backend. The frontend never talks to the LLM directly. */
+import { getDeviceId } from "./deviceId";
+
 export const API_BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
 
 export type DataStatus = "verified" | "historical" | "demo" | "unavailable";
@@ -68,9 +70,20 @@ export interface TranscriptMessage {
   language: string;
   cards: Card[];
   created_at: string;
+  device_id?: string | null;
   concern_category?: string | null;
   sentiment?: number | null;
   guardrail_status?: string;
+}
+
+export interface SessionStatus {
+  participation_mode: "together" | "two_devices" | "learner_only";
+  parent_joined: boolean;
+  parent_language: string | null;
+  learner_language: string;
+  alignment: { learner_done: boolean; parent_done: boolean };
+  mood_pre: { learner: boolean; parent: boolean };
+  family_code: string | null;
 }
 
 export interface Trade {
@@ -137,17 +150,23 @@ export const api = {
   createSession: (body: {
     language: string; district: string; learner_education: string; learner_interests: string[];
     top_concerns: string[]; income_bracket?: string | null; helper_mode: boolean; consent_given: boolean;
-  }) => post<{ session_id: string }>("/api/session", body),
+    participation_mode: string;
+  }) => post<{ session_id: string; family_code: string | null }>("/api/session", { ...body, device_id: getDeviceId() }),
+  familyCode: (id: string) => post<{ family_code: string }>(`/api/session/${id}/family-code`, {}),
+  status: (id: string) => request<SessionStatus>(`/api/session/${id}/status`),
+  join: (code: string, language: string) =>
+    post<{ session_id: string; district: string; learner_language: string; learner_education: string }>(
+      "/api/join", { code, language, device_id: getDeviceId() }),
   updateSession: (id: string, body: { language?: string; helper_mode?: boolean }) =>
     request<{ ok: boolean }>(`/api/session/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   endSession: (id: string) => post<{ ok: boolean }>(`/api/session/${id}/end`, {}),
   mood: (id: string, body: { respondent: "learner" | "parent"; phase: "pre" | "post"; value: number }) =>
-    post<{ ok: boolean }>(`/api/session/${id}/mood`, body),
+    post<{ ok: boolean }>(`/api/session/${id}/mood`, { ...body, device_id: getDeviceId() }),
   saveAlignment: (id: string, body: { respondent: "learner" | "parent"; ranking: string[] }) =>
-    post<AlignmentResult>(`/api/session/${id}/alignment`, body),
+    post<AlignmentResult>(`/api/session/${id}/alignment`, { ...body, device_id: getDeviceId() }),
   getAlignment: (id: string) => request<AlignmentResult>(`/api/session/${id}/alignment`),
   chat: (body: { session_id: string; speaker: string; text: string; language: string }) =>
-    post<ChatResponse>("/api/chat", body),
+    post<ChatResponse>("/api/chat", { ...body, device_id: getDeviceId() }),
   transcript: (id: string) => request<TranscriptMessage[]>(`/api/session/${id}/messages`),
   summary: (id: string) => request<SummaryData>(`/api/session/${id}/summary`),
   event: (body: { session_id?: string | null; event_type: string; payload?: Record<string, unknown> }) =>

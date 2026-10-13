@@ -11,6 +11,7 @@ import { useAppState } from "./lib/state";
 // Heavier screens are code-split so the family journey's first load stays small.
 const Alignment = lazy(() => import("./pages/Alignment"));
 const Mood = lazy(() => import("./pages/Mood"));
+const Join = lazy(() => import("./pages/Join"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Summary = lazy(() => import("./pages/Summary"));
 const Counsellor = lazy(() => import("./pages/Counsellor"));
@@ -45,6 +46,7 @@ export default function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/start" element={<Onboarding />} />
                 <Route path="/alignment" element={<Alignment />} />
+                <Route path="/join" element={<Join />} />
                 <Route path="/mood/:phase" element={<Mood />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/summary/:sessionId?" element={<Summary />} />
