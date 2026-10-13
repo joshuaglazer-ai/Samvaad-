@@ -7,7 +7,9 @@ import Button from "../components/ui/Button";
 import IconCard from "../components/ui/IconCard";
 import Icon from "../components/ui/Icon";
 import ReadAloud from "../components/ui/ReadAloud";
-import { api, type AlignmentResult } from "../lib/api";
+import GoalPicker from "../components/goal/GoalPicker";
+import GoalCompare from "../components/goal/GoalCompare";
+import { api, type AlignmentResult, type GoalComparison } from "../lib/api";
 import { useAppState } from "../lib/state";
 import { useSpeak } from "../lib/useSpeak";
 
@@ -142,7 +144,7 @@ export function FamilyCodeCard({ sessionId }: { sessionId: string }) {
 }
 
 export default function Alignment() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { sessionId, profile, lite } = useAppState();
   const { speak, stop, speakingId } = useSpeak();
@@ -159,6 +161,19 @@ export default function Alignment() {
   const [result, setResult] = useState<AlignmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const poll = useRef<number | null>(null);
+  // Parent on their own phone: their hope for the child is asked here, before the cards (null = still checking).
+  const [hopeDone, setHopeDone] = useState<boolean | null>(isParentPhone ? null : true);
+  const [goals, setGoals] = useState<GoalComparison | null>(null);
+
+  useEffect(() => {
+    if (!isParentPhone || !sessionId) return;
+    api.status(sessionId).then((s) => setHopeDone(s.goals.parent_done)).catch(() => setHopeDone(false));
+  }, [isParentPhone, sessionId]);
+
+  useEffect(() => {
+    if (!result?.complete || !sessionId || mode === "learner_only") return;
+    api.aspirations(sessionId, i18n.language).then(setGoals).catch(() => undefined);
+  }, [result, sessionId, mode, i18n.language]);
 
   useEffect(() => {
     if (!sessionId) navigate("/start");
@@ -210,7 +225,16 @@ export default function Alignment() {
 
         {mode === "two_devices" && !isParentPhone && sessionId && !result && <FamilyCodeCard sessionId={sessionId} />}
 
-        {!saved && (
+        {isParentPhone && hopeDone === false && sessionId && (
+          <div className="space-y-3">
+            <h2 className="text-xl font-bold text-ink-900">{t("goal.parentQuestion")}</h2>
+            <GoalPicker who="parent" district={profile.district}
+              onDone={(g) => api.saveAspiration(sessionId, "parent", g).then(() => setHopeDone(true)).catch(() => setError(t("app.offline")))}
+              onSkip={() => setHopeDone(true)} />
+          </div>
+        )}
+
+        {!saved && hopeDone && (
           <>
             <p className="flex items-start gap-2 text-lg text-ink-600">
               {together && <Icon name="users" className="mt-1 shrink-0 text-primary-700" />}
@@ -246,6 +270,7 @@ export default function Alignment() {
 
         {result && (
           <m.div initial={lite ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            {goals?.learner && goals.parent && <div className="mb-5"><GoalCompare goals={goals} /></div>}
             <ResultView result={result} />
             <Button className="mt-6 w-full" size="lg" iconRight="arrowRight" onClick={next}>{t("alignment.continue")}</Button>
           </m.div>

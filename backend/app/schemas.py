@@ -12,6 +12,32 @@ def DeviceId():  # noqa: N802 - a fresh Field per model; a random id per phone, 
     return Field(default=None, max_length=40, pattern=r"^[A-Za-z0-9-]*$")
 
 
+class AspirationIn(BaseModel):
+    """A goal in the family's own words (voice/text) or picked from Browse / "Not sure yet" (database trades)."""
+    text: str | None = Field(default=None, max_length=300)
+    language: Lang = "en"
+    source: Literal["voice", "text", "browse", "quiz"]
+    selected_slugs: list[str] = Field(default=[], max_length=3)
+    confirmed: bool = True
+
+
+class AspirationSave(AspirationIn):
+    who: Literal["learner", "parent"]
+    device_id: str | None = DeviceId()
+
+
+class MatchIn(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    language: Lang = "en"
+
+
+class SuggestIn(BaseModel):
+    likes: list[Literal["hands", "people", "machines", "outdoors", "computers"]] = []
+    near_home: bool | None = None
+    district: str | None = None
+    language: Lang = "en"
+
+
 class SessionCreate(BaseModel):
     language: Lang = "en"
     district: str
@@ -23,6 +49,8 @@ class SessionCreate(BaseModel):
     consent_given: bool
     participation_mode: Mode = "together"
     device_id: str | None = DeviceId()
+    aspiration: AspirationIn | None = None
+    parent_hope: AspirationIn | None = None
 
     @field_validator("district")
     @classmethod

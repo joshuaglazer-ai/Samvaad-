@@ -5,13 +5,15 @@ from .. import models as m
 from ..config import CONCERN_CATEGORIES, DISTRICT_COORDS, DISTRICTS, EDUCATION_LEVELS, get_settings
 from ..data_tools import DataTools
 from ..db import get_db
-from ..schemas import EventIn
+from ..goals import suggest_trades
+from ..schemas import EventIn, MatchIn, SuggestIn
 
 router = APIRouter(prefix="/api", tags=["data"])
 
 ALLOWED_EVENTS = {"session_started", "outcome_viewed", "ladder_viewed", "alignment_completed", "summary_shared",
                   "summary_downloaded", "mood_recorded", "voice_used", "read_aloud_used", "lite_mode",
-                  "language_switched", "quick_reply_used", "counsellor_button"}
+                  "language_switched", "quick_reply_used", "counsellor_button", "goal_option_chosen",
+                  "goal_changed"}
 
 
 @router.get("/config")
@@ -39,6 +41,20 @@ def trades(language: str = "en", sector: str | None = None, db: Session = Depend
     if sector and not r["found"]:
         raise HTTPException(404, "sector not found")
     return r["records"]
+
+
+@router.post("/aspiration/match")
+def match_aspiration(body: MatchIn, db: Session = Depends(get_db)) -> dict:
+    """Preview what the app understood, before the session exists. Nothing is stored (the gap is logged on save)."""
+    r = DataTools(db, language=body.language).match_aspiration(body.text, body.language)
+    db.rollback()
+    return r
+
+
+@router.post("/aspiration/suggest")
+def suggest(body: SuggestIn, db: Session = Depends(get_db)) -> dict:
+    district = body.district if body.district in DISTRICTS else None
+    return {"suggestions": suggest_trades(db, body.likes, body.near_home, district, body.language)}
 
 
 @router.get("/trades/{slug}/progression")

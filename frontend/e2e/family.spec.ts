@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const load = (l: string) => JSON.parse(readFileSync(new URL(`../src/i18n/${l}.json`, import.meta.url), "utf-8"));
+const [en, kn] = ["en", "kn"].map(load);
 
 const SHOTS = process.env.E2E_SHOTS;
 
@@ -15,8 +19,13 @@ test("two-phone family session: join with code, own language, shared result", as
   await learner.getByRole("radio", { name: /Parent joins on their own phone/ }).click();
   await learner.getByRole("radio", { name: "Kalaburagi" }).click();
   await learner.getByRole("radio", { name: "Class 10 (SSLC)" }).click();
-  await learner.getByRole("checkbox", { name: "Vehicles" }).click();
-  await learner.getByRole("button", { name: "Next" }).click();
+  // Learner's goal, typed in their own words; the closest database trade is confirmed.
+  await learner.getByRole("radio", { name: new RegExp(en.goal.say) }).click();
+  await learner.getByLabel(en.goal.inputLabel).fill("bike mechanic");
+  await learner.getByRole("button", { name: en.goal.check }).click();
+  await learner.getByRole("button", { name: en.goal.yesRight }).click();
+  // No parent hope here: on two phones the parent answers on their own phone.
+  await expect(learner.getByTestId("goal-parent")).toHaveCount(0);
   await learner.getByRole("checkbox", { name: "Safety", exact: true }).click();
   await learner.getByRole("button", { name: "Next" }).click();
   await learner.getByRole("button", { name: "Skip" }).click();
@@ -38,6 +47,14 @@ test("two-phone family session: join with code, own language, shared result", as
   await parent.getByRole("button", { name: "ಸೇರಿ" }).click();
   await expect(learner.getByText("The parent has joined.")).toBeVisible({ timeout: 10_000 });
 
+  // The parent's own hope for the child, asked on their phone in their language, before the cards.
+  await expect(parent.getByText(kn.goal.parentQuestion)).toBeVisible();
+  await parent.getByRole("radio", { name: new RegExp(kn.goal.say) }).click();
+  await parent.getByLabel(kn.goal.inputLabel).fill("ಡಾಕ್ಟರ್");
+  await parent.getByRole("button", { name: kn.goal.check }).click();
+  await expect(parent.getByText(kn.goal.degreeMsg)).toBeVisible();
+  await parent.getByRole("button", { name: kn.goal.saveGoal }).click();
+
   // Each arranges their own cards.
   const values = ["Earning soon", "Staying near home", "Respect in the community", "Studying further", "Safety"];
   for (const v of values) await learner.getByRole("checkbox", { name: v }).click();
@@ -49,6 +66,11 @@ test("two-phone family session: join with code, own language, shared result", as
   await parent.getByRole("button", { name: "ನನ್ನ ಕ್ರಮ ಉಳಿಸಿ" }).click();
   await expect(parent.getByText("ನೀವಿಬ್ಬರೂ ಉತ್ತಮವಾದದ್ದನ್ನೇ ಬಯಸುತ್ತೀರಿ.")).toBeVisible();
   await expect(learner.getByText("You both want what is best.")).toBeVisible({ timeout: 10_000 });
+  // Learner goal vs parent hope, side by side on both phones, each in its own language.
+  await expect(learner.getByTestId("goal-learner-label")).toHaveText("Two-Wheeler Service Technician");
+  await expect(learner.getByTestId("goal-parent-label")).toHaveText("ಡಾಕ್ಟರ್");
+  await expect(learner.getByTestId("goal-compare")).toContainText(en.goal.lookAtBoth);
+  await expect(parent.getByTestId("goal-compare")).toContainText(kn.goal.lookAtBoth);
 
   // Parent's mood: only the parent is asked on the parent's phone.
   await parent.getByRole("button", { name: "ಮಾತುಕತೆಗೆ ಮುಂದುವರಿಸಿ" }).click();

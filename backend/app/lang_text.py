@@ -280,3 +280,19 @@ MATCH_REASON = {
     "hi": {"term": "आपके शब्दों से मिलता है: “{term}”", "model": "आपकी बात के करीब"},
     "te": {"term": "మీ మాటలకు సరిపోతుంది: “{term}”", "model": "మీరు చెప్పినదానికి దగ్గరగా"},
 }
+
+# "Not sure yet" quiz: why a trade is suggested (one short line; suggestions are not decisions). Needs native review.
+QUIZ_REASON = {
+    "en": {"hands": "Good if you like working with your hands", "people": "Good if you like helping people",
+           "machines": "Good if you like machines and how they work", "outdoors": "Good if you like working outdoors",
+           "computers": "Good if you like computers and new technology"},
+    "kn": {"hands": "ಕೈಯಿಂದ ಕೆಲಸ ಮಾಡಲು ಇಷ್ಟವಿದ್ದರೆ ಸೂಕ್ತ", "people": "ಜನರಿಗೆ ಸಹಾಯ ಮಾಡಲು ಇಷ್ಟವಿದ್ದರೆ ಸೂಕ್ತ",
+           "machines": "ಯಂತ್ರಗಳು ಇಷ್ಟವಿದ್ದರೆ ಸೂಕ್ತ", "outdoors": "ಹೊರಗೆ ಕೆಲಸ ಮಾಡಲು ಇಷ್ಟವಿದ್ದರೆ ಸೂಕ್ತ",
+           "computers": "ಕಂಪ್ಯೂಟರ್ ಮತ್ತು ಹೊಸ ತಂತ್ರಜ್ಞಾನ ಇಷ್ಟವಿದ್ದರೆ ಸೂಕ್ತ"},
+    "hi": {"hands": "अगर हाथ से काम करना पसंद है तो अच्छा", "people": "अगर लोगों की मदद करना पसंद है तो अच्छा",
+           "machines": "अगर मशीनें पसंद हैं तो अच्छा", "outdoors": "अगर बाहर काम करना पसंद है तो अच्छा",
+           "computers": "अगर कंप्यूटर और नई टेक्नोलॉजी पसंद है तो अच्छा"},
+    "te": {"hands": "చేతులతో పని చేయడం ఇష్టమైతే బాగుంటుంది", "people": "ప్రజలకు సహాయం చేయడం ఇష్టమైతే బాగుంటుంది",
+           "machines": "యంత్రాలు ఇష్టమైతే బాగుంటుంది", "outdoors": "బయట పని చేయడం ఇష్టమైతే బాగుంటుంది",
+           "computers": "కంప్యూటర్లు, కొత్త టెక్నాలజీ ఇష్టమైతే బాగుంటుంది"},
+}

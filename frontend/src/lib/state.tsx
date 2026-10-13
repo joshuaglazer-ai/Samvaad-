@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { initialLite, saveLite } from "./device";
 import type { Lang } from "./languages";
+import type { GoalDraft } from "./api";
 
 export type Speaker = "learner" | "parent" | "helper";
 export type Theme = "light" | "dark";
@@ -37,6 +38,9 @@ export interface Profile {
   district?: string;
   learner_education?: string;
   learner_interests: string[];
+  /** The learner's own goal and (answer-together mode) the parent's hope, kept until the session is created. */
+  aspiration?: GoalDraft | null;
+  parent_hope?: GoalDraft | null;
   top_concerns: string[];
   income_bracket?: string | null;
   helper_mode: boolean;

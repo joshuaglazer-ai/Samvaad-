@@ -91,7 +91,8 @@ def trades_discussed(db: Session, session_id: str) -> list[str]:
 
 def build_context(db: Session, s: m.SessionRow, speaker: str, language: str, user_text: str) -> dict:
     discussed = trades_discussed(db, s.id)
-    suggested = next((INTEREST_TO_TRADE[i] for i in (s.learner_interests or []) if i in INTEREST_TO_TRADE), None)
+    # The learner's own confirmed goal comes first (Update 3); older sessions may still carry interest chips.
+    suggested = next(iter(s.matched_trade_slugs or []), None) or         next((INTEREST_TO_TRADE[i] for i in (s.learner_interests or []) if i in INTEREST_TO_TRADE), None)
     return {
         "language": language, "speaker": speaker, "district": s.district,
         "learner_education": s.learner_education,

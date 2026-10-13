@@ -86,7 +86,12 @@ def term_score(text_key: str, term: str) -> float:
     best = 0.0
     for k in (n, n + 1):  # never fewer words than the term: "mechanic" is not "ev mechanic"
         for w in _windows(words, k):
-            best = max(best, fuzz.ratio(w, t) / 100)
+            if k == n > 1:
+                # Same number of words: every word must be close ("bike mechanic" is not "ev mechanic").
+                score = sum(fuzz.ratio(a, b) for a, b in zip(w.split(), t.split())) / (100 * n)
+            else:
+                score = fuzz.ratio(w, t) / 100
+            best = max(best, score)
     return best
 
 

@@ -8,6 +8,7 @@ import ProgressDots from "../components/ui/ProgressDots";
 import LanguagePicker from "../components/ui/LanguagePicker";
 import Toggle from "../components/ui/Toggle";
 import ReadAloud, { VoiceMissingNotice } from "../components/ui/ReadAloud";
+import GoalPicker from "../components/goal/GoalPicker";
 import { api } from "../lib/api";
 import { useAppState, type ParticipationMode } from "../lib/state";
 import { useSpeak } from "../lib/useSpeak";
@@ -19,18 +20,14 @@ const EDUCATION: [string, string][] = [
   ["class_8", "learner"], ["class_10", "learner"], ["class_12", "learner"], ["iti", "gear"],
   ["diploma", "graduation"], ["graduate", "graduation"], ["other", "help"],
 ];
-const INTERESTS: [string, string][] = [
-  ["machines", "gear"], ["helping", "heart"], ["electricity", "bolt"], ["vehicles", "car"],
-  ["nature_solar", "sun"], ["computers", "cpu"],
-];
 export const CONCERN_ICONS: Record<string, string> = {
   income: "rupee", job_security: "briefcase", social_status: "users", safety: "shield", cost: "wallet",
   distance_migration: "route", degree_first: "graduation", other: "help",
 };
 const DEFAULT_INCOME = ["<1.5L", "1.5-3L", "3-6L", ">6L", "prefer_not_to_say"];
 
-type StepKey = "language" | "consent" | "mode" | "district" | "education" | "interests" | "concerns" | "income" | "helper";
-const STEPS: StepKey[] = ["language", "consent", "mode", "district", "education", "interests", "concerns", "income", "helper"];
+type StepKey = "language" | "consent" | "mode" | "district" | "education" | "goal" | "hope" | "concerns" | "income" | "helper";
+const ALL_STEPS: StepKey[] = ["language", "consent", "mode", "district", "education", "goal", "hope", "concerns", "income", "helper"];
 const MODES: [ParticipationMode, string][] = [["together", "users"], ["two_devices", "phone"], ["learner_only", "learner"]];
 
 export default function Onboarding() {
@@ -43,6 +40,9 @@ export default function Onboarding() {
   const [incomeBands, setIncomeBands] = useState<string[]>(DEFAULT_INCOME);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The parent's hope is asked here only when answering together; on two phones the parent answers on their own.
+  const STEPS = useMemo(() => ALL_STEPS.filter((k) => k !== "hope" || profile.participation_mode === "together"),
+    [profile.participation_mode]);
   const key = STEPS[step];
 
   useEffect(() => {
@@ -56,7 +56,8 @@ export default function Onboarding() {
       case "mode": return t("mode.question");
       case "district": return t("onboarding.district");
       case "education": return t("onboarding.education");
-      case "interests": return t("onboarding.interests");
+      case "goal": return t("goal.question");
+      case "hope": return t("goal.parentQuestion");
       case "concerns": return t("onboarding.concerns");
       case "income": return t("onboarding.income");
       case "helper": return t("onboarding.helper");
@@ -75,7 +76,7 @@ export default function Onboarding() {
       case "consent": return consent;
       case "district": return !!profile.district;
       case "education": return !!profile.learner_education;
-      case "interests": return profile.learner_interests.length > 0;
+      case "goal": return !!profile.aspiration;
       case "concerns": return profile.top_concerns.length > 0;
       default: return true;
     }
@@ -91,7 +92,9 @@ export default function Onboarding() {
         language: profile.language,
         district: profile.district!,
         learner_education: profile.learner_education!,
-        learner_interests: profile.learner_interests,
+        learner_interests: [],
+        aspiration: profile.aspiration ?? null,
+        parent_hope: profile.participation_mode === "together" ? profile.parent_hope ?? null : null,
         top_concerns: profile.top_concerns,
         income_bracket: profile.income_bracket ?? null,
         helper_mode: profile.helper_mode,
@@ -132,7 +135,9 @@ export default function Onboarding() {
             <ReadAloud speaking={speakingId === `q-${key}`} onSpeak={() => speak(question, `q-${key}`)} onStop={stop} compact />
           </div>
           {missingVoice && <VoiceMissingNotice />}
-          {key === "interests" && <p className="mt-1 text-ink-600">{t("onboarding.interestsHint")}</p>}
+          {key === "hope" && (
+            <p className="mt-1 flex items-center gap-2 font-semibold text-primary-700"><Icon name="parent" size={20} />{t("alignment.parentTurn")}</p>
+          )}
           {key === "concerns" && <p className="mt-1 text-ink-600">{t("onboarding.concernsHint")}</p>}
           {key === "income" && <p className="mt-1 text-ink-600">{t("onboarding.incomeHint")}</p>}
           {profile.helper_mode && <p className="mt-2 rounded-xl bg-lavender-100 px-3 py-2 text-sm text-ink-900">{t("chat.helperTip")}</p>}
@@ -183,14 +188,29 @@ export default function Onboarding() {
               </div>
             )}
 
-            {key === "interests" && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label={question}>
-                {INTERESTS.map(([v, icon]) => (
-                  <IconCard key={v} role="checkbox" icon={icon} label={t(`interests.${v}`)} selected={profile.learner_interests.includes(v)}
-                    onClick={() => setProfile({ learner_interests: toggleIn(profile.learner_interests, v) })} />
-                ))}
-              </div>
-            )}
+            {(key === "goal" || key === "hope") && (() => {
+              const who = key === "goal" ? "learner" : "parent";
+              const saved = key === "goal" ? profile.aspiration : profile.parent_hope;
+              if (saved) {
+                return (
+                  <div className="space-y-3">
+                    <p className="text-lg text-ink-900">
+                      {who === "learner" ? t("goal.yourGoal") : t("goal.parentHope")}:{" "}
+                      <strong data-testid={`goal-saved-${who}`}>{saved.label || t("goal.notChosen")}</strong>
+                    </p>
+                    <Button variant="secondary" icon="refresh"
+                      onClick={() => setProfile(who === "learner" ? { aspiration: null } : { parent_hope: null })}>
+                      {t("goal.change")}
+                    </Button>
+                  </div>
+                );
+              }
+              return (
+                <GoalPicker key={who} who={who} district={profile.district}
+                  onDone={(g) => { setProfile(who === "learner" ? { aspiration: g } : { parent_hope: g }); autoNext(); }}
+                  onSkip={who === "parent" ? () => { setProfile({ parent_hope: null }); setStep(step + 1); } : undefined} />
+              );
+            })()}
 
             {key === "concerns" && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" role="group" aria-label={question}>

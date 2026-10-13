@@ -148,3 +148,8 @@ def test_real_mode_failure_falls_back_to_fuzzy(db):
 def test_empty_text(db):
     r = match(db, "   ")
     assert r["matched"] is False and r["error"] == "empty text"
+
+
+def test_multi_word_terms_need_every_word_close(db):
+    """"bike mechanic" must not pull in "ev mechanic" just because most letters overlap."""
+    assert "ev-service-technician" not in [c["slug"] for c in match(db, "bike mechanic")["candidates"]]

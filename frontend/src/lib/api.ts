@@ -86,7 +86,50 @@ export interface SessionStatus {
   alignment: { learner_done: boolean; parent_done: boolean };
   mood_pre: { learner: boolean; parent: boolean };
   family_code: string | null;
+  goals: { learner_done: boolean; parent_done: boolean };
 }
+
+export type GoalSource = "voice" | "text" | "browse" | "quiz";
+export type GoalCategory = "vocational_match" | "degree_career" | "unknown";
+
+/** A goal as sent to the backend: the family's own words and/or trades they picked (database slugs only). */
+export interface GoalDraft {
+  text: string | null;
+  language: string;
+  source: GoalSource;
+  selected_slugs: string[];
+  confirmed: boolean;
+  /** What to show back: the chosen trade's name, or the family's own words. */
+  label: string;
+}
+
+export interface MatchCandidate { slug: string; name: string; sector: string; score: number; reason: string }
+
+export interface MatchResult {
+  matched: boolean;
+  category: GoalCategory;
+  text: string;
+  candidates: MatchCandidate[];
+  related: MatchCandidate[];
+  related_sector?: string | null;
+  degree_career?: string;
+  confidence: number;
+}
+
+export interface Suggestion { slug: string; name: string; sector: string; icon: string; reason: string }
+
+export interface GoalView {
+  who: "learner" | "parent";
+  text: string | null;
+  language: string | null;
+  source: GoalSource | null;
+  category: GoalCategory | null;
+  confirmed: boolean;
+  trades: { slug: string; name: string }[];
+  label: string | null;
+}
+
+export interface GoalComparison { learner: GoalView | null; parent: GoalView | null; differ: boolean }
 
 export type LangText = Partial<Record<"en" | "kn" | "hi" | "te", string>>;
 
@@ -168,7 +211,7 @@ export const api = {
   createSession: (body: {
     language: string; district: string; learner_education: string; learner_interests: string[];
     top_concerns: string[]; income_bracket?: string | null; helper_mode: boolean; consent_given: boolean;
-    participation_mode: string;
+    participation_mode: string; aspiration?: GoalDraft | null; parent_hope?: GoalDraft | null;
   }) => post<{ session_id: string; family_code: string | null }>("/api/session", { ...body, device_id: getDeviceId() }),
   familyCode: (id: string) => post<{ family_code: string }>(`/api/session/${id}/family-code`, {}),
   status: (id: string) => request<SessionStatus>(`/api/session/${id}/status`),
@@ -189,6 +232,13 @@ export const api = {
   summary: (id: string) => request<SummaryData>(`/api/session/${id}/summary`),
   event: (body: { session_id?: string | null; event_type: string; payload?: Record<string, unknown> }) =>
     post<{ ok: boolean }>("/api/events", body),
+  matchAspiration: (text: string, language: string) => post<MatchResult>("/api/aspiration/match", { text, language }),
+  suggestTrades: (body: { likes: string[]; near_home: boolean | null; district?: string | null; language: string }) =>
+    post<{ suggestions: Suggestion[] }>("/api/aspiration/suggest", body),
+  saveAspiration: (id: string, who: "learner" | "parent", goal: GoalDraft) =>
+    request<GoalComparison>(`/api/session/${id}/aspiration`, {
+      method: "PUT", body: JSON.stringify({ ...goal, who, device_id: getDeviceId() }) }),
+  aspirations: (id: string, lang: string) => request<GoalComparison>(`/api/session/${id}/aspirations?language=${lang}`),
   sectors: (lang: string) => request<Sector[]>(`/api/sectors?language=${lang}`),
   trades: (lang: string, sector?: string) =>
     request<Trade[]>(`/api/trades?language=${lang}${sector ? `&sector=${encodeURIComponent(sector)}` : ""}`),

@@ -9,6 +9,8 @@ const SHOTS = process.env.E2E_SHOTS; // optional folder for screenshots
 const DICTS = { en, kn, hi, te } as const;
 const NATIVE = { en: "English", kn: "ಕನ್ನಡ", hi: "हिन्दी", te: "తెలుగు" } as const;
 type Lang = keyof typeof DICTS;
+const API = "http://localhost:8000";
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 async function shot(page: Page, name: string) {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
@@ -18,6 +20,9 @@ async function shot(page: Page, name: string) {
 async function journey(page: Page, lang: Lang) {
   const d = DICTS[lang];
   const values = Object.values(d.alignment.values);
+  // Sector and trade names come from the API (never hard-coded), in this language.
+  const sectors = await (await page.request.get(`${API}/api/sectors?language=${lang}`)).json();
+  const trades = await (await page.request.get(`${API}/api/trades?language=${lang}&sector=${sectors[0].slug}`)).json();
 
   await page.addInitScript(() => {
     sessionStorage.setItem("samvaad.readAloud", "false");
@@ -34,8 +39,22 @@ async function journey(page: Page, lang: Lang) {
   await page.getByRole("radio", { name: new RegExp(d.mode.together) }).click();
   await page.getByRole("radio", { name: d.districts.Mysuru }).click();
   await page.getByRole("radio", { name: d.education.class_10 }).click();
-  await page.getByRole("checkbox", { name: d.interests.electricity }).click();
-  await page.getByRole("button", { name: d.app.next }).click();
+  // Learner's goal: Browse ideas → a sector → a trade → confirm (taps only).
+  await page.getByRole("radio", { name: new RegExp(esc(d.goal.browse)) }).click();
+  await page.getByRole("radio", { name: sectors[0].name, exact: true }).click();
+  await page.getByRole("radio", { name: trades[0].name, exact: true }).click();
+  await expect(page.getByTestId("goal-understood")).toHaveText(trades[0].name);
+  await page.getByRole("button", { name: d.goal.yesRight }).click();
+  // Parent's hope (answering together): "Not sure yet" picture questions → a suggestion → confirm.
+  await expect(page.getByTestId("goal-parent")).toBeVisible();
+  await page.getByRole("radio", { name: new RegExp(esc(d.goal.notSure)) }).click();
+  for (const yes of [false, true, false, false, false]) {
+    await page.getByRole("radio", { name: yes ? d.goal.yes : d.goal.notReally, exact: true }).click();
+  }
+  await page.getByRole("radio", { name: d.goal.nearHome }).click();
+  await expect(page.getByText(d.goal.suggestionsNote)).toBeVisible();
+  await page.getByTestId("goal-parent").getByRole("radio").first().click();
+  await page.getByRole("button", { name: d.goal.yesRight }).click();
   await page.getByRole("checkbox", { name: d.concerns.income, exact: true }).click();
   await shot(page, `${lang}-02-concerns`);
   await page.getByRole("button", { name: d.app.next }).click();
@@ -49,6 +68,9 @@ async function journey(page: Page, lang: Lang) {
     for (const v of order) await row.getByRole("checkbox", { name: v }).click();
   }
   await page.getByRole("button", { name: d.family.saveBoth }).click();
+  // Different hopes are shown kindly, side by side.
+  await expect(page.getByTestId("goal-compare")).toContainText(d.goal.lookAtBoth);
+  await expect(page.getByTestId("goal-learner-label")).toHaveText(trades[0].name);
   await shot(page, `${lang}-03-alignment`);
   await page.getByRole("button", { name: d.alignment.continue }).click();
 

@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from .. import models as m
 from ..alignment import compare, latest_rankings, session_alignment, validate_ranking
 from ..db import get_db
-from ..schemas import AlignmentIn, JoinIn, MoodIn, SessionCreate, SessionUpdate
+from ..goals import compare_goals, save_goal
+from ..schemas import AlignmentIn, AspirationSave, JoinIn, MoodIn, SessionCreate, SessionUpdate
 
 router = APIRouter(prefix="/api/session", tags=["session"])
 join_router = APIRouter(prefix="/api", tags=["session"])
@@ -48,12 +49,20 @@ def get_session_or_404(db: Session, session_id: str) -> m.SessionRow:
 def create_session(body: SessionCreate, db: Session = Depends(get_db)) -> dict:
     if not body.consent_given:
         raise HTTPException(400, "consent is required to start a session")
-    s = m.SessionRow(**body.model_dump(exclude={"device_id"}))
+    s = m.SessionRow(**body.model_dump(exclude={"device_id", "aspiration", "parent_hope"}))
     if s.participation_mode == "two_devices":
         s.family_code = _new_family_code(db)
         s.family_code_expires_at = m.utcnow() + FAMILY_CODE_TTL
     db.add(s)
     db.flush()
+    for who, goal in (("learner", body.aspiration), ("parent", body.parent_hope)):
+        if goal is None or (who == "parent" and s.participation_mode == "learner_only"):
+            continue
+        try:
+            save_goal(db, s, who, goal.text, goal.language, goal.source, goal.selected_slugs, goal.confirmed)
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(422, str(exc)) from exc
     db.add(m.Event(session_id=s.id, event_type="session_started",
                    payload={"language": s.language, "district": s.district, "helper_mode": s.helper_mode,
                             "participation_mode": s.participation_mode}))
@@ -86,7 +95,30 @@ def session_status(session_id: str, db: Session = Depends(get_db)) -> dict:
         "alignment": {"learner_done": "learner" in rankings, "parent_done": "parent" in rankings},
         "mood_pre": {"learner": s.mood_pre_learner is not None, "parent": s.mood_pre_parent is not None},
         "family_code": s.family_code if s.participation_mode == "two_devices" else None,
+        "goals": {"learner_done": bool(s.aspiration_text or s.matched_trade_slugs),
+                  "parent_done": bool(s.parent_hope_text or s.parent_hope_matched_trade_slugs)},
     }
+
+
+@router.put("/{session_id}/aspiration")
+def save_aspiration(session_id: str, body: AspirationSave, db: Session = Depends(get_db)) -> dict:
+    """Save (or change) the learner's goal or the parent's hope. Also used by "Change goal" in chat."""
+    s = get_session_or_404(db, session_id)
+    if body.who == "parent" and s.participation_mode == "learner_only":
+        raise HTTPException(409, "this session is learner only")
+    try:
+        save_goal(db, s, body.who, body.text, body.language, body.source, body.selected_slugs, body.confirmed)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422, str(exc)) from exc
+    db.commit()
+    return compare_goals(db, s, body.language)
+
+
+@router.get("/{session_id}/aspirations")
+def get_aspirations(session_id: str, language: str | None = None, db: Session = Depends(get_db)) -> dict:
+    s = get_session_or_404(db, session_id)
+    return compare_goals(db, s, language)
 
 
 @join_router.post("/join")

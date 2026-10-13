@@ -245,8 +245,12 @@ class DataTools:
             if district is None and self.ctx.session_id:
                 row = self.db.get(m.SessionRow, self.ctx.session_id)
                 district = row.district if row else None
-            self._gap("match_aspiration", None, normalise_district(district),
-                      {"aspiration_text": text, "language": lang, "category": result["category"]})
+            query = {"aspiration_text": text, "language": lang, "category": result["category"]}
+            already = self.ctx.session_id and any(
+                g.query == query for g in self.db.scalars(select(m.EvidenceGap).where(
+                    m.EvidenceGap.session_id == self.ctx.session_id, m.EvidenceGap.tool_name == "match_aspiration")))
+            if not already:  # saving the same goal again is not a new gap
+                self._gap("match_aspiration", None, normalise_district(district), query)
         return {"found": result["matched"], "data_status": None, "source": None, "limitations": [],
                 "limitation_codes": [] if result["matched"] else ["no_data"], **result}
 
