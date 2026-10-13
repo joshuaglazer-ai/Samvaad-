@@ -14,12 +14,13 @@ import EscalationPanel from "../components/chat/EscalationPanel";
 import { api, type EscalationInfo } from "../lib/api";
 import { useAppState, type Speaker } from "../lib/state";
 import { getDeviceId } from "../lib/deviceId";
+import { asLang, languageName, type Lang } from "../lib/languages";
 import { useSpeak } from "../lib/useSpeak";
 
 export default function Chat() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { sessionId, profile, readAloud, setReadAloud, disclaimerSeen, markDisclaimerSeen } = useAppState();
+  const { sessionId, profile, setProfile, readAloud, setReadAloud, disclaimerSeen, markDisclaimerSeen } = useAppState();
   const { speak, stop, speakingId, missingVoice, lang } = useSpeak();
   const [items, setItems] = useState<ChatItem[]>([]);
   // Who can speak on this phone depends on how the family is taking part.
@@ -32,6 +33,7 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [quick, setQuick] = useState<string[]>([]);
+  const [suggestLang, setSuggestLang] = useState<Lang | null>(null);
   const [escalation, setEscalation] = useState<EscalationInfo | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +89,11 @@ export default function Chat() {
     setDraft("");
     setBusy(true);
     try {
-      const res = await api.chat({ session_id: sessionId, speaker, text: clean, language: i18n.language === "kn" ? "kn" : "en" });
+      const res = await api.chat({ session_id: sessionId, speaker, text: clean, language: asLang(i18n.language) });
       const id = String(res.message_id);
       setItems((cur) => [...cur, { id, role: "assistant", speaker: "bot", text: res.reply_text, cards: res.cards }]);
       setQuick(res.quick_replies);
+      setSuggestLang(res.suggest_language ?? null);
       if (res.escalation) {
         setEscalation(res.escalation);
         setPanelOpen(true);
@@ -158,6 +161,12 @@ export default function Chat() {
       <div ref={endRef} />
 
       {error && <p role="alert" className="rounded-xl bg-danger-600/10 px-3 py-2 text-danger-600">{error}</p>}
+      {suggestLang && (
+        <Button variant="secondary" icon="globe" className="self-start" lang={suggestLang}
+          onClick={() => { i18n.changeLanguage(suggestLang); setProfile({ language: suggestLang }); setSuggestLang(null); }}>
+          {t("chat.switchTo", { lang: languageName(suggestLang) })}
+        </Button>
+      )}
 
       {escalation && panelOpen ? (
         <EscalationPanel escalation={escalation} speaker={speaker} onBack={() => setPanelOpen(false)} />

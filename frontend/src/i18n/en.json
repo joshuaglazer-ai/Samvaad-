@@ -8,7 +8,6 @@
     "liteOn": "Lite mode is on",
     "liteOff": "Lite mode is off",
     "language": "Language",
-    "switchTo": "ಕನ್ನಡ",
     "back": "Back",
     "next": "Next",
     "skip": "Skip",
@@ -163,14 +162,15 @@
     "thinking": "Thinking…",
     "finish": "Finish",
     "voiceUnsupported": "Voice input is not available on this browser. Please tap a question below.",
-    "knVoiceMissing": "Kannada voice not available on this device. The text is highlighted instead.",
     "helperTip": "Helper tip: read the question aloud, let the family choose, then tap for them.",
     "starter1": "How much can I earn?",
     "starter2": "Will there be a steady job?",
     "starter3": "What are the next steps after training?",
     "starter4": "How much does training cost?",
     "starter5": "Is it safe?",
-    "starter6": "Should we choose a degree first?"
+    "starter6": "Should we choose a degree first?",
+    "voiceMissing": "Voice is not available for this language on this phone. You can tap the options instead.",
+    "switchTo": "Switch to {{lang}}"
   },
   "cards": {
     "seeCard": "See the card below",

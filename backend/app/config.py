@@ -13,7 +13,7 @@ DISTRICT_COORDS = {
     "Dharwad": (15.4589, 75.0078),
 }
 SECTORS = ["Electrical", "Automotive", "Healthcare", "Green Energy"]
-LANGUAGES = ["en", "kn"]
+LANGUAGES = ["en", "kn", "hi", "te"]
 EDUCATION_LEVELS = ["class_8", "class_10", "class_12", "iti", "diploma", "graduate", "other"]
 CONCERN_CATEGORIES = [
     "income", "job_security", "social_status", "safety",

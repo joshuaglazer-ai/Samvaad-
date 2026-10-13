@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon";
 import { useAppState } from "../../lib/state";
 import { api } from "../../lib/api";
+import LanguageMenu from "./LanguageMenu";
+import type { Lang } from "../../lib/languages";
 
 export default function Header() {
   const { t, i18n } = useTranslation();
   const { lite, setLite, theme, setTheme, sessionId, profile, setProfile } = useAppState();
 
-  const switchLang = () => {
-    const next = i18n.language === "kn" ? "en" : "kn";
+  const switchLang = (next: Lang) => {
     i18n.changeLanguage(next);
     setProfile({ language: next });
     // Switching language keeps the same session. A parent's own phone keeps its own language (each phone's
@@ -45,15 +46,7 @@ export default function Header() {
           <Icon name={theme === "dark" ? "sun" : "moon"} size={20} />
           <span>{theme === "dark" ? t("app.light") : t("app.dark")}</span>
         </button>
-        <button
-          type="button"
-          onClick={switchLang}
-          className="flex min-h-12 items-center gap-1.5 whitespace-nowrap rounded-2xl border border-lavender-200 bg-white/80 px-2 text-sm font-semibold text-ink-900"
-          aria-label={`${t("app.language")}: ${t("app.switchTo")}`}
-        >
-          <Icon name="globe" size={20} />
-          <span lang={i18n.language === "kn" ? "en" : "kn"}>{t("app.switchTo")}</span>
-        </button>
+        <LanguageMenu onChange={switchLang} />
       </div>
     </header>
   );

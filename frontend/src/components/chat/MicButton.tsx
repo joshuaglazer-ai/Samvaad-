@@ -20,6 +20,7 @@ export default function MicButton({ lang, onResult, disabled, highlight }: Props
   const { sessionId, lite } = useAppState();
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
+  const [langUnavailable, setLangUnavailable] = useState(false);
   const stopRef = useRef<() => void>(() => undefined);
   const supported = getSpeech().canListen();
 
@@ -43,7 +44,11 @@ export default function MicButton({ lang, onResult, disabled, highlight }: Props
         setListening(false);
         setInterim("");
       },
-      onError: () => setListening(false),
+      onError: (reason) => {
+        setListening(false);
+        // e.g. "language-not-supported": no recogniser for this language on this phone
+        if (reason !== "no-speech" && reason !== "aborted") setLangUnavailable(true);
+      },
     });
   };
   const stop = () => {
@@ -70,6 +75,7 @@ export default function MicButton({ lang, onResult, disabled, highlight }: Props
       {listening && (
         <p role="status" className="max-w-xs text-center text-sm text-ink-600">{interim || t("chat.listening")}</p>
       )}
+      {langUnavailable && !listening && <p role="status" className="max-w-xs text-sm text-ink-600">{t("chat.voiceMissing")}</p>}
     </div>
   );
 }

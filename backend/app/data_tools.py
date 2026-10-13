@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from . import models as m
 from .config import DISTRICTS, STATE
+from .i18n import norm_lang, tr
 
 GEO_ORDER = ["district", "state", "national"]
 # For the same year and place, prefer better evidence.
@@ -57,12 +58,19 @@ SATISFIES = {
     "graduate": {"graduate"},
 }
 
+from .lang_text import LIMITATION_TEXT as _LT  # noqa: E402
+
+for _code, _texts in _LT.items():
+    LIMITATION_TEXT[_code].update(_texts)
+
 DISTRICT_ALIASES = {
     "bengaluru": "Bengaluru Urban", "bangalore": "Bengaluru Urban", "bengaluru urban": "Bengaluru Urban",
     "ಬೆಂಗಳೂರು": "Bengaluru Urban", "ಬೆಂಗಳೂರು ನಗರ": "Bengaluru Urban",
     "mysuru": "Mysuru", "mysore": "Mysuru", "ಮೈಸೂರು": "Mysuru",
     "kalaburagi": "Kalaburagi", "gulbarga": "Kalaburagi", "ಕಲಬುರಗಿ": "Kalaburagi",
     "dharwad": "Dharwad", "hubli-dharwad": "Dharwad", "ಧಾರವಾಡ": "Dharwad",
+    "बेंगलुरु": "Bengaluru Urban", "मैसूरु": "Mysuru", "मैसूर": "Mysuru", "कलबुर्गी": "Kalaburagi", "धारवाड़": "Dharwad",
+    "బెంగళూరు": "Bengaluru Urban", "మైసూరు": "Mysuru", "కలబురగి": "Kalaburagi", "ధార్వాడ్": "Dharwad",
 }
 
 
@@ -81,8 +89,7 @@ def satisfies(learner_education: str | None, requirement: str) -> bool | None:
 
 
 def limitation_texts(codes: list[str], language: str) -> list[str]:
-    lang = "kn" if language == "kn" else "en"
-    return [LIMITATION_TEXT[c][lang] for c in codes if c in LIMITATION_TEXT]
+    return [tr(LIMITATION_TEXT[c], language, f"limitation.{c}") for c in codes if c in LIMITATION_TEXT]
 
 
 @dataclass
@@ -100,7 +107,7 @@ class DataTools:
 
     def __init__(self, db: Session, session_id: str | None = None, language: str = "en",
                  concern: str | None = None):
-        self.ctx = ToolContext(db=db, session_id=session_id, language=language, concern=concern)
+        self.ctx = ToolContext(db=db, session_id=session_id, language=norm_lang(language), concern=concern)
 
     @property
     def db(self) -> Session:
@@ -108,7 +115,7 @@ class DataTools:
 
     # ------------------------------------------------------------------ helpers
     def _name(self, t: m.Trade) -> str:
-        return t.name_kn if self.ctx.language == "kn" else t.name_en
+        return tr(t.names, self.ctx.language, f"trade.{t.slug}.names")
 
     def resolve_trade(self, trade: str | None) -> m.Trade | None:
         if not trade:
@@ -119,7 +126,9 @@ class DataTools:
         if row:
             return row
         for t in self.db.scalars(select(m.Trade)):
-            if key.lower() in (t.name_en.lower(), t.name_kn) or slug == re.sub(r"[^a-z0-9]+", "-", t.name_en.lower()):
+            names = [n for n in (t.names or {}).values() if n]
+            en = (t.names or {}).get("en", "")
+            if key.lower() in [n.lower() for n in names] or slug == re.sub(r"[^a-z0-9]+", "-", en.lower()):
                 return t
         return None
 
@@ -151,18 +160,18 @@ class DataTools:
     # ------------------------------------------------------------------ tools
     def list_trades(self, sector: str | None = None, language: str | None = None) -> dict:
         if language:
-            self.ctx.language = language
-        q = select(m.Trade).order_by(m.Trade.sector, m.Trade.name_en)
+            self.ctx.language = norm_lang(language)
+        q = select(m.Trade).order_by(m.Trade.sector, m.Trade.slug)
         if sector:
             q = q.where(m.Trade.sector.ilike(sector))
         trades = list(self.db.scalars(q))
         if not trades:
             return self._not_found("list_trades", None, None, {"sector": sector})
         records = [{
-            "slug": t.slug, "name": self._name(t), "name_en": t.name_en, "name_kn": t.name_kn,
+            "slug": t.slug, "name": self._name(t), "name_en": tr(t.names, "en"), "names": t.names,
             "sector": t.sector, "nsqf_level": t.nsqf_level, "duration_months": t.duration_months,
-            "entry_requirement": t.entry_requirement_kn if self.ctx.language == "kn" else t.entry_requirement_en,
-            "job_roles": t.job_roles_kn if self.ctx.language == "kn" else t.job_roles_en,
+            "entry_requirement": tr(t.entry_requirement, self.ctx.language, f"trade.{t.slug}.entry_requirement"),
+            "job_roles": tr(t.job_roles, self.ctx.language, f"trade.{t.slug}.job_roles"),
             "icon": t.icon,
         } for t in trades]
         return {"found": True, "records": records, "geo_level_used": None, "data_status": "demo",
@@ -237,20 +246,20 @@ class DataTools:
             .order_by(m.ProgressionStep.step_order)))
         if not steps:
             return self._not_found("get_progression", trade.slug, None, query)
-        kn = self.ctx.language == "kn"
+        lang = self.ctx.language
         src = self.db.get(m.Source, steps[0].source_id) if steps[0].source_id else None
         records = [{
             "step_order": s.step_order, "kind": s.kind,
-            "title": s.title_kn if kn else s.title_en,
+            "title": tr(s.titles, lang, f"step.{trade.slug}.{s.step_order}.title"),
             "nsqf_level": s.nsqf_level,
-            "entry_requirement": s.entry_requirement_kn if kn else s.entry_requirement_en,
+            "entry_requirement": tr(s.entry_requirement, lang, f"step.{trade.slug}.{s.step_order}.entry_requirement"),
             "duration_months": s.duration_months,
             "eligible": bool(satisfies(education_level, s.entry_min_education)),
         } for s in steps]
         return {
             "found": True, "trade_slug": trade.slug, "trade_name": self._name(trade),
             "trade_nsqf_level": trade.nsqf_level, "trade_duration_months": trade.duration_months,
-            "trade_entry_requirement": trade.entry_requirement_kn if kn else trade.entry_requirement_en,
+            "trade_entry_requirement": tr(trade.entry_requirement, lang, f"trade.{trade.slug}.entry_requirement"),
             "can_start_training": satisfies(education_level, trade.entry_min_education),
             "education_level": education_level,
             # Ladders currently come only from the demo seed (the importer covers outcomes).
@@ -311,14 +320,13 @@ class DataTools:
                 continue
             supports.append({
                 "support_type": r.support_type,
-                "description": r.description_kn if self.ctx.language == "kn" else r.description_en,
+                "description": tr(r.description, self.ctx.language, f"costs.{r.id}.description"),
                 "fee_min": r.fee_min, "fee_max": r.fee_max, "data_status": r.data_status,
                 "depends_on_income": targeted and not known_income,
             })
         if any(s["depends_on_income"] for s in supports):
             codes.append("income_unknown")
         codes.append("demo")
-        kn = self.ctx.language == "kn"
         return {
             "found": True, "trade_slug": trade.slug, "trade_name": self._name(trade),
             "geo_level_used": geo, "data_status": fee.data_status if fee else "demo",
@@ -326,7 +334,7 @@ class DataTools:
             "limitations": limitation_texts(codes, self.ctx.language), "limitation_codes": codes,
             "records": [{
                 "fee_min": fee.fee_min if fee else None, "fee_max": fee.fee_max if fee else None,
-                "fee_description": (fee.description_kn if kn else fee.description_en) if fee else None,
+                "fee_description": tr(fee.description, self.ctx.language, f"costs.{fee.id}.description") if fee else None,
                 "district": fee.district if fee else None,
                 "supports": supports,
             }],
@@ -359,7 +367,7 @@ TOOL_SCHEMAS: list[dict] = [
                        "Use when the family asks what options exist.",
         "input_schema": {"type": "object", "properties": {
             "sector": {"type": "string", "enum": ["Electrical", "Automotive", "Healthcare", "Green Energy"]},
-            "language": {"type": "string", "enum": ["en", "kn"]},
+            "language": {"type": "string", "enum": ["en", "kn", "hi", "te"]},
         }, "additionalProperties": False},
     },
     {

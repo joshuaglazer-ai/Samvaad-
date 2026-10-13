@@ -86,7 +86,11 @@ def resolve_trade(db: Session, name: str, aliases: dict[str, str]) -> m.Trade | 
     row = db.scalar(select(m.Trade).where(m.Trade.slug == slug))
     if row:
         return row
-    return db.scalar(select(m.Trade).where(m.Trade.name_en.ilike(key)))
+    # Match any language's name (names are stored as {lang: name}).
+    for t in db.scalars(select(m.Trade)):
+        if any(key.lower() == (n or "").lower() for n in (t.names or {}).values()):
+            return t
+    return None
 
 
 def validate_mapping(mapping: dict) -> None:

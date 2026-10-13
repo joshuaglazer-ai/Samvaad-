@@ -1,87 +1,93 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+// The app's own translation files, so the test always clicks exactly what users see.
+const load = (l: string) => JSON.parse(readFileSync(new URL(`../src/i18n/${l}.json`, import.meta.url), "utf-8"));
+const [en, kn, hi, te] = ["en", "kn", "hi", "te"].map(load);
 
 const SHOTS = process.env.E2E_SHOTS; // optional folder for screenshots
+const DICTS = { en, kn, hi, te } as const;
+const NATIVE = { en: "English", kn: "ಕನ್ನಡ", hi: "हिन्दी", te: "తెలుగు" } as const;
+type Lang = keyof typeof DICTS;
 
 async function shot(page: Page, name: string) {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
 }
 
-/** The whole family journey with taps only — no typing (PS outcome 4). */
-async function journey(page: Page, lang: "en" | "kn") {
-  const L = lang === "en"
-    ? { start: /Start together/, agree: "I agree, continue", district: "Mysuru", edu: "Class 10 (SSLC)", interest: "Electricity",
-        concern: "Income", next: "Next", skip: "Skip", helperNo: "No, we are using it ourselves", finish: "Continue",
-        save: "Save my order", cont: "Continue to the conversation", face: "Hopeful", moodCont: "Continue",
-        starter: "How much can I earn?", ladder: "What are the next steps after training?", done: "Finish",
-        demo: "Demo data — for testing only.", summary: "Family Summary", together: "Together on this phone",
-        learner: "Learner", parent: "Parent", saveBoth: "Save both", values: ["Earning soon", "Staying near home", "Respect in the community", "Studying further", "Safety"] }
-    : { start: /ಒಟ್ಟಿಗೆ ಪ್ರಾರಂಭಿಸಿ/, agree: "ಒಪ್ಪುತ್ತೇನೆ, ಮುಂದುವರಿಸಿ", district: "ಮೈಸೂರು", edu: "10ನೇ ತರಗತಿ (SSLC)", interest: "ವಿದ್ಯುತ್",
-        concern: "ಆದಾಯ", next: "ಮುಂದೆ", skip: "ಬಿಟ್ಟುಬಿಡಿ", helperNo: "ಇಲ್ಲ, ನಾವೇ ಬಳಸುತ್ತಿದ್ದೇವೆ", finish: "ಮುಂದುವರಿಸಿ",
-        save: "ನನ್ನ ಕ್ರಮ ಉಳಿಸಿ", cont: "ಮಾತುಕತೆಗೆ ಮುಂದುವರಿಸಿ", face: "ಭರವಸೆ ಇದೆ", moodCont: "ಮುಂದುವರಿಸಿ",
-        starter: "ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?", ladder: "ತರಬೇತಿಯ ನಂತರ ಮುಂದಿನ ಹಂತಗಳೇನು?", done: "ಮುಗಿಸಿ",
-        demo: "ಡೆಮೊ ಮಾಹಿತಿ — ಪರೀಕ್ಷೆಗೆ ಮಾತ್ರ.", summary: "ಕುಟುಂಬದ ಸಾರಾಂಶ", together: "ಈ ಫೋನ್‌ನಲ್ಲಿ ಒಟ್ಟಿಗೆ",
-        learner: "ಕಲಿಯುವವರು", parent: "ಪೋಷಕರು", saveBoth: "ಎರಡನ್ನೂ ಉಳಿಸಿ", values: ["ಬೇಗ ಸಂಪಾದನೆ", "ಮನೆಯ ಹತ್ತಿರ ಇರುವುದು", "ಊರಿನಲ್ಲಿ ಗೌರವ", "ಮುಂದೆ ಓದುವುದು", "ಸುರಕ್ಷತೆ"] };
+/** The whole family journey with taps only — no typing (PS outcome 4). Labels come from the app's own i18n files. */
+async function journey(page: Page, lang: Lang) {
+  const d = DICTS[lang];
+  const values = Object.values(d.alignment.values);
 
   await page.addInitScript(() => {
     sessionStorage.setItem("samvaad.readAloud", "false");
     localStorage.setItem("samvaad.lite", "1");
   });
   await page.goto("/");
-  await page.getByRole("button", { name: lang === "kn" ? "ಕನ್ನಡ" : "English", exact: true }).click();
+  await page.getByRole("radio", { name: NATIVE[lang], exact: true }).click();
   await shot(page, `${lang}-01-landing`);
-  await page.getByRole("button", { name: L.start }).click();
+  await page.getByRole("button", { name: new RegExp(d.landing.start) }).click();
 
   // onboarding
-  await page.getByRole("radio", { name: lang === "kn" ? "ಕನ್ನಡ" : "English" }).click();
-  await page.getByRole("button", { name: L.agree }).click();
-  await page.getByRole("radio", { name: new RegExp(L.together) }).click();
-  await page.getByRole("radio", { name: L.district }).click();
-  await page.getByRole("radio", { name: L.edu }).click();
-  await page.getByRole("checkbox", { name: L.interest }).click();
-  await page.getByRole("button", { name: L.next }).click();
-  await page.getByRole("checkbox", { name: L.concern, exact: true }).click();
+  await page.getByRole("radio", { name: NATIVE[lang], exact: true }).click();
+  await page.getByRole("button", { name: d.consent.agree }).click();
+  await page.getByRole("radio", { name: new RegExp(d.mode.together) }).click();
+  await page.getByRole("radio", { name: d.districts.Mysuru }).click();
+  await page.getByRole("radio", { name: d.education.class_10 }).click();
+  await page.getByRole("checkbox", { name: d.interests.electricity }).click();
+  await page.getByRole("button", { name: d.app.next }).click();
+  await page.getByRole("checkbox", { name: d.concerns.income, exact: true }).click();
   await shot(page, `${lang}-02-concerns`);
-  await page.getByRole("button", { name: L.next }).click();
-  await page.getByRole("button", { name: L.skip }).click();
-  await page.getByRole("radio", { name: L.helperNo }).click();
-  await page.getByRole("button", { name: L.finish }).click();
+  await page.getByRole("button", { name: d.app.next }).click();
+  await page.getByRole("button", { name: d.app.skip }).click();
+  await page.getByRole("radio", { name: d.onboarding.helperNo }).click();
+  await page.getByRole("button", { name: d.onboarding.finish }).click();
 
   // alignment "together": both rows on one screen, saved together (no passing the phone)
-  for (const [who, order] of [[L.learner, L.values], [L.parent, [...L.values].reverse()]] as const) {
+  for (const [who, order] of [[d.alignment.learner, values], [d.alignment.parent, [...values].reverse()]] as const) {
     const row = page.getByRole("region", { name: who, exact: true });
     for (const v of order) await row.getByRole("checkbox", { name: v }).click();
   }
-  await page.getByRole("button", { name: L.saveBoth }).click();
+  await page.getByRole("button", { name: d.family.saveBoth }).click();
   await shot(page, `${lang}-03-alignment`);
-  await page.getByRole("button", { name: L.cont }).click();
+  await page.getByRole("button", { name: d.alignment.continue }).click();
 
   // pre mood
-  await page.getByRole("radio", { name: L.face }).first().click();
-  await page.getByRole("button", { name: L.moodCont }).click();
+  await page.getByRole("radio", { name: d.mood.faces["4"] }).first().click();
+  await page.getByRole("button", { name: d.mood.continue }).click();
 
   // chat via quick replies only
-  await page.getByRole("button", { name: L.starter }).click();
-  await expect(page.getByText(L.demo).first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: d.chat.starter1 }).click();
+  await expect(page.getByText(d.app.demoLabel).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("article").first()).toContainText("₹");
-  await page.getByRole("button", { name: L.ladder }).click();
+  await page.getByRole("button", { name: d.chat.starter3 }).click();
   await expect(page.locator("ol[aria-label]").last()).toBeVisible({ timeout: 15_000 });
   await shot(page, `${lang}-04-chat`);
-  await page.getByRole("button", { name: L.done }).click();
+  await page.getByRole("button", { name: d.chat.finish }).click();
 
   // post mood → summary
-  await page.getByRole("radio", { name: L.face }).last().click();
-  await page.getByRole("button", { name: L.moodCont }).click();
-  await expect(page.getByRole("heading", { name: L.summary })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("radio", { name: d.mood.faces["4"] }).last().click();
+  await page.getByRole("button", { name: d.mood.continue }).click();
+  await expect(page.getByRole("heading", { name: d.summary.title })).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("img[alt]").first()).toBeVisible(); // QR code
   await shot(page, `${lang}-05-summary`);
 }
 
-test("full journey in English without typing", async ({ page }) => {
-  await journey(page, "en");
-});
+for (const lang of ["en", "kn", "hi", "te"] as const) {
+  test(`full journey in ${NATIVE[lang]} without typing`, async ({ page }) => {
+    await journey(page, lang);
+  });
+}
 
-test("full journey in Kannada without typing", async ({ page }) => {
-  await journey(page, "kn");
+test("header language menu switches between all four languages", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("samvaad.lite", "1"));
+  await page.goto("/");
+  for (const lang of ["hi", "te", "kn", "en"] as const) {
+    await page.getByRole("button", { name: /^(Language|ಭಾಷೆ|भाषा|భాష):/ }).click();
+    await page.getByRole("menuitemradio", { name: new RegExp(NATIVE[lang]) }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", lang);
+    await expect(page.getByRole("button", { name: new RegExp(DICTS[lang].landing.start) })).toBeVisible();
+  }
 });
 
 test("Lite mode renders no WebGL canvas", async ({ browser }) => {

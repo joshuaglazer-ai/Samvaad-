@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from .config import CONCERN_CATEGORIES, DISTRICTS, EDUCATION_LEVELS, get_settings
 
-Lang = Literal["en", "kn"]
+Lang = Literal["en", "kn", "hi", "te"]
 Mode = Literal["together", "two_devices", "learner_only"]
 
 

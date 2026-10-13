@@ -2,13 +2,16 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./en.json";
 import kn from "./kn.json";
+import hi from "./hi.json";
+import te from "./te.json";
+import { isLang, type Lang } from "../lib/languages";
 
-export type Lang = "en" | "kn";
+export type { Lang };
 
 function initialLang(): Lang {
   try {
     const saved = localStorage.getItem("samvaad.lang");
-    if (saved === "en" || saved === "kn") return saved;
+    if (isLang(saved)) return saved;
   } catch {
     /* storage may be blocked */
   }
@@ -16,7 +19,7 @@ function initialLang(): Lang {
 }
 
 i18n.use(initReactI18next).init({
-  resources: { en: { translation: en }, kn: { translation: kn } },
+  resources: { en: { translation: en }, kn: { translation: kn }, hi: { translation: hi }, te: { translation: te } },
   lng: initialLang(),
   fallbackLng: "en",
   interpolation: { escapeValue: false },

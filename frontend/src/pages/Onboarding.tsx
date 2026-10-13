@@ -5,6 +5,7 @@ import Button from "../components/ui/Button";
 import IconCard from "../components/ui/IconCard";
 import Icon from "../components/ui/Icon";
 import ProgressDots from "../components/ui/ProgressDots";
+import LanguagePicker from "../components/ui/LanguagePicker";
 import Toggle from "../components/ui/Toggle";
 import ReadAloud, { VoiceMissingNotice } from "../components/ui/ReadAloud";
 import { api } from "../lib/api";
@@ -138,12 +139,8 @@ export default function Onboarding() {
 
           <div className="mt-5">
             {key === "language" && (
-              <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label={question}>
-                {(["kn", "en"] as const).map((lng) => (
-                  <IconCard key={lng} icon="globe" label={lng === "kn" ? "ಕನ್ನಡ" : "English"} selected={profile.language === lng}
-                    onClick={() => { i18n.changeLanguage(lng); setProfile({ language: lng }); autoNext(); }} />
-                ))}
-              </div>
+              <LanguagePicker value={profile.language} label={question}
+                onChange={(lng) => { i18n.changeLanguage(lng); setProfile({ language: lng }); autoNext(); }} />
             )}
 
             {key === "consent" && (

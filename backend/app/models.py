@@ -32,18 +32,16 @@ class Trade(Base):
     __tablename__ = "trades"
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    name_en: Mapped[str] = mapped_column(String(120))
-    name_kn: Mapped[str] = mapped_column(String(200))
+    # Translatable text is stored as {"en": …, "kn": …, "hi": …, "te": …}; see app/i18n.py (English fallback).
+    names: Mapped[dict] = mapped_column(JSON, default=dict)
     sector: Mapped[str] = mapped_column(String(60), index=True)
     nsqf_level: Mapped[int] = mapped_column(Integer)
     qualification_code: Mapped[str | None] = mapped_column(String(40))  # left NULL until verified on nqr.gov.in
     awarding_body: Mapped[str | None] = mapped_column(String(200))
     duration_months: Mapped[int] = mapped_column(Integer)
-    entry_requirement_en: Mapped[str] = mapped_column(String(200))
-    entry_requirement_kn: Mapped[str] = mapped_column(String(300))
+    entry_requirement: Mapped[dict] = mapped_column(JSON, default=dict)
     entry_min_education: Mapped[str] = mapped_column(String(20), default="class_10")
-    job_roles_en: Mapped[list] = mapped_column(JSON, default=list)
-    job_roles_kn: Mapped[list] = mapped_column(JSON, default=list)
+    job_roles: Mapped[dict] = mapped_column(JSON, default=dict)  # {lang: [role, …]}
     icon: Mapped[str] = mapped_column(String(40), default="tool")
 
 
@@ -91,11 +89,9 @@ class ProgressionStep(Base):
     trade_id: Mapped[int] = mapped_column(ForeignKey("trades.id"), index=True)
     step_order: Mapped[int] = mapped_column(Integer)
     kind: Mapped[str] = mapped_column(String(20))  # job | upskill | apprenticeship | diploma | degree
-    title_en: Mapped[str] = mapped_column(String(200))
-    title_kn: Mapped[str] = mapped_column(String(300))
+    titles: Mapped[dict] = mapped_column(JSON, default=dict)
     nsqf_level: Mapped[int | None] = mapped_column(Integer)
-    entry_requirement_en: Mapped[str] = mapped_column(String(200))
-    entry_requirement_kn: Mapped[str] = mapped_column(String(300))
+    entry_requirement: Mapped[dict] = mapped_column(JSON, default=dict)
     entry_min_education: Mapped[str] = mapped_column(String(20), default="class_10")
     duration_months: Mapped[int | None] = mapped_column(Integer)
     source_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"))
@@ -109,8 +105,7 @@ class CostSupport(Base):
     fee_min: Mapped[int | None] = mapped_column(Integer)
     fee_max: Mapped[int | None] = mapped_column(Integer)
     support_type: Mapped[str] = mapped_column(String(20))  # scheme | stipend | scholarship | none
-    description_en: Mapped[str] = mapped_column(Text)
-    description_kn: Mapped[str] = mapped_column(Text)
+    description: Mapped[dict] = mapped_column(JSON, default=dict)
     source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"))
     data_status: Mapped[str] = mapped_column(String(20), default="demo")
     # Optional: income brackets this support targets (empty = all)
@@ -197,8 +192,9 @@ class Escalation(Base):
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
     trigger: Mapped[str] = mapped_column(String(30))
     status: Mapped[str] = mapped_column(String(20), default="pending")
-    summary_en: Mapped[str] = mapped_column(Text)
-    summary_kn: Mapped[str] = mapped_column(Text)
+    summary_en: Mapped[str] = mapped_column(Text)            # always English, for the counsellor
+    summary_local: Mapped[str] = mapped_column(Text)         # in the session language
+    summary_language: Mapped[str] = mapped_column(String(5), default="en")
     assigned_to: Mapped[str | None] = mapped_column(String(80))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

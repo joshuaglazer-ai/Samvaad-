@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { initialLite, saveLite } from "./device";
+import type { Lang } from "./languages";
 
 export type Speaker = "learner" | "parent" | "helper";
 export type Theme = "light" | "dark";
@@ -29,7 +30,7 @@ export type ParticipationMode = "together" | "two_devices" | "learner_only";
 export type DeviceRole = "learner" | "parent";
 
 export interface Profile {
-  language: "en" | "kn";
+  language: Lang;
   participation_mode: ParticipationMode;
   role: DeviceRole;
   family_code?: string | null;

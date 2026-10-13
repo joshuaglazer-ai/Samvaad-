@@ -8,6 +8,7 @@ import {
   api, wsUrl, type CallbackItem, type CounsellorCase, type CounsellorCaseDetail, type TranscriptMessage,
 } from "../lib/api";
 import { minutesSince } from "../lib/format";
+import { languageName } from "../lib/languages";
 
 const TRIGGER_ICON: Record<string, string> = {
   user_request: "hand", no_data: "alert", negative_sentiment: "heart", sensitive_topic: "shield", repeated_failure: "refresh",
@@ -25,7 +26,7 @@ function Console({ pin, logout }: { pin: string; logout: () => void }) {
   const [detail, setDetail] = useState<CounsellorCaseDetail | null>(null);
   const [live, setLive] = useState<TranscriptMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [summaryLang, setSummaryLang] = useState<"en" | "kn">("en");
+  const [summaryLocal, setSummaryLocal] = useState(false);
   const [me, setMe] = useState(() => {
     try {
       return sessionStorage.getItem("samvaad.counsellorName") ?? "Counsellor 1";
@@ -84,7 +85,7 @@ function Console({ pin, logout }: { pin: string; logout: () => void }) {
     lastLive.current = 0;
     api.counsellor.caseDetail(pin, selected).then((d) => {
       setDetail(d);
-      setSummaryLang(d.language === "kn" ? "kn" : "en");
+      setSummaryLocal(false);
     }).catch(() => undefined);
     api.escalationMessages(selected, 0).then(addLive).catch(() => undefined);
     let poll: number | null = null;
@@ -170,7 +171,7 @@ function Console({ pin, logout }: { pin: string; logout: () => void }) {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[c.status]}`}>{c.status.replace("_", " ")}</span>
                   </div>
                   <p className="mt-1 text-sm text-ink-600">
-                    #{c.id} · {c.district} · {c.language === "kn" ? "ಕನ್ನಡ" : "English"} · {t("counsellor.waiting", { m: minutesSince(c.created_at, now) })}
+                    #{c.id} · {c.district} · {languageName(c.language)} · {t("counsellor.waiting", { m: minutesSince(c.created_at, now) })}
                     {c.has_callback && " · ☎"}
                   </p>
                 </button>
@@ -205,16 +206,17 @@ function Console({ pin, logout }: { pin: string; logout: () => void }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-bold text-ink-900">{t("counsellor.summary")} #{detail.id}</h2>
                 <div className="flex gap-1" role="group" aria-label="Summary language">
-                  {(["en", "kn"] as const).map((l) => (
-                    <button key={l} type="button" aria-pressed={summaryLang === l} onClick={() => setSummaryLang(l)}
-                      className={`min-h-12 rounded-xl px-3 font-semibold ${summaryLang === l ? "bg-primary-600 text-white" : "bg-white/80 text-ink-900"}`}>
-                      {l === "en" ? "English" : "ಕನ್ನಡ"}
+                  {[false, true].filter((loc) => !loc || detail.summary_language !== "en").map((loc) => (
+                    <button key={String(loc)} type="button" aria-pressed={summaryLocal === loc} onClick={() => setSummaryLocal(loc)}
+                      lang={loc ? detail.summary_language : "en"}
+                      className={`min-h-12 rounded-xl px-3 font-semibold ${summaryLocal === loc ? "bg-primary-600 text-white" : "bg-white/80 text-ink-900"}`}>
+                      {loc ? languageName(detail.summary_language) : "English"}
                     </button>
                   ))}
                 </div>
               </div>
-              <pre lang={summaryLang} className="mt-3 whitespace-pre-wrap rounded-2xl bg-lavender-100 p-3 font-sans text-base text-ink-900">
-                {summaryLang === "kn" ? detail.summary_kn : detail.summary_en}
+              <pre lang={summaryLocal ? detail.summary_language : "en"} className="mt-3 whitespace-pre-wrap rounded-2xl bg-lavender-100 p-3 font-sans text-base text-ink-900">
+                {summaryLocal ? detail.summary_local : detail.summary_en}
               </pre>
               <p className="mt-2 text-sm text-ink-600">
                 {t("counsellor.status")}: <strong className="text-ink-900">{detail.status}</strong>

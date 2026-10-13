@@ -33,3 +33,15 @@ describe("voice selection", () => {
     expect(pickVoice([{ lang: "en-GB" }], "en")?.lang).toBe("en-GB");
   });
 });
+
+describe("Hindi and Telugu voices", () => {
+  const voices = [{ lang: "en-IN" }, { lang: "hi-IN" }, { lang: "te_IN" }];
+  it("picks hi-IN and te-IN voices when installed", () => {
+    expect(pickVoice(voices, "hi")?.lang).toBe("hi-IN");
+    expect(pickVoice(voices, "te")?.lang).toBe("te_IN");
+  });
+  it("returns nothing (UI shows the calm notice) when the language has no voice", () => {
+    expect(pickVoice([{ lang: "en-IN" }], "te")).toBeUndefined();
+    expect(pickVoice([{ lang: "en-IN" }], "hi")).toBeUndefined();
+  });
+});

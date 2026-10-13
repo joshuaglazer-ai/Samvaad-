@@ -53,6 +53,8 @@ export interface ChatResponse {
   quick_replies: string[];
   guardrail_status: "pass" | "regenerated" | "fallback" | "na";
   escalation: EscalationInfo | null;
+  reply_language?: string;
+  suggest_language?: "en" | "kn" | "hi" | "te" | null;
 }
 
 export interface EscalationInfo {
@@ -207,7 +209,8 @@ export interface CounsellorCase {
   trigger: string;
   status: string;
   summary_en: string;
-  summary_kn: string;
+  summary_local: string;
+  summary_language: string;
   assigned_to: string | null;
   created_at: string;
   waiting_minutes: number;

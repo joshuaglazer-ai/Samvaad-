@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { m } from "framer-motion";
 import Icon from "../components/ui/Icon";
 import { useAppState } from "../lib/state";
+import LanguagePicker from "../components/ui/LanguagePicker";
+import { asLang, type Lang } from "../lib/languages";
 
 const SkyScene = lazy(() => import("../components/three/SkyScene"));
 
@@ -12,13 +14,13 @@ export default function Landing() {
   const navigate = useNavigate();
   const { lite, reset, setProfile } = useAppState();
 
-  const chooseLang = (lng: "en" | "kn") => {
+  const chooseLang = (lng: Lang) => {
     i18n.changeLanguage(lng);
     setProfile({ language: lng });
   };
   const start = () => {
     reset();
-    setProfile({ language: i18n.language === "kn" ? "kn" : "en" });
+    setProfile({ language: asLang(i18n.language) });
     navigate("/start");
   };
 
@@ -53,27 +55,13 @@ export default function Landing() {
             <Icon name="users" size={26} />
             {t("landing.start")}
           </span>
-          <span className="text-base opacity-95" lang={i18n.language === "kn" ? "en" : "kn"}>{t("landing.startAlt")}</span>
+          <span className="text-base opacity-95" lang={i18n.language === "en" ? "kn" : "en"}>{t("landing.startAlt")}</span>
         </m.button>
 
         <div className="mt-6" role="group" aria-label={t("landing.chooseLanguage")}>
           <p className="mb-2 text-sm font-semibold text-ink-600">{t("landing.chooseLanguage")}</p>
-          <div className="flex gap-3">
-            {(["kn", "en"] as const).map((lng) => (
-              <button
-                key={lng}
-                type="button"
-                lang={lng}
-                aria-pressed={i18n.language === lng}
-                onClick={() => chooseLang(lng)}
-                className={`flex min-h-12 min-w-28 items-center justify-center gap-2 rounded-2xl border-2 px-4 text-lg font-semibold ${
-                  i18n.language === lng ? "border-primary-600 bg-white text-ink-900" : "border-lavender-200 bg-white/70 text-ink-900"
-                }`}
-              >
-                <Icon name="globe" size={20} />
-                {lng === "kn" ? "ಕನ್ನಡ" : "English"}
-              </button>
-            ))}
+          <div className="mx-auto w-full max-w-md">
+            <LanguagePicker variant="compact" value={asLang(i18n.language)} onChange={chooseLang} label={t("landing.chooseLanguage")} />
           </div>
         </div>
 

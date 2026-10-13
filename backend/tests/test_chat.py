@@ -96,7 +96,8 @@ def test_sensitive_topic_escalates(client, SessionMaker):
     with SessionMaker() as db:
         case = db.scalar(select(m.Escalation).where(m.Escalation.session_id == sid))
         assert case.summary_en.count("\n") == 2 and "Mysuru" in case.summary_en
-        assert "ಮೈಸೂರು" in case.summary_kn
+        # English session: the local summary is the English one (always English + session language)
+        assert case.summary_language == "en" and case.summary_local == case.summary_en
         assert db.get(m.SessionRow, sid).escalated is True
 
 

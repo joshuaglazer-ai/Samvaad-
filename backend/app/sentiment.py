@@ -11,6 +11,7 @@ import re
 
 from pydantic import BaseModel, Field, ValidationError
 
+from . import lang_text as _lt
 from .config import CONCERN_CATEGORIES
 
 log = logging.getLogger(__name__)
@@ -88,14 +89,16 @@ def keyword_tag(text: str) -> Tag:
 
 def is_sensitive(text: str) -> bool:
     low = text.lower()
-    if any(re.search(p, low) for p in SENSITIVE_PATTERNS):
+    if any(re.search(p, low) for p in SENSITIVE_PATTERNS) or any(w in low for w in _lt.SENSITIVE):
         return True
-    return bool(re.search(CHILD_WORDS, low) and re.search(SAFETY_WORDS, low))
+    child = re.search(CHILD_WORDS, low) or any(w in low for w in _lt.CHILD_WORDS)
+    unsafe = re.search(SAFETY_WORDS, low) or any(w in low for w in _lt.SAFETY_WORDS)
+    return bool(child and unsafe)
 
 
 def wants_counsellor(text: str) -> bool:
     low = text.lower()
-    return any(re.search(p, low) for p in COUNSELLOR_REQUEST)
+    return any(re.search(p, low) for p in COUNSELLOR_REQUEST) or any(w in low for w in _lt.COUNSELLOR_REQUEST)
 
 
 TAG_SYSTEM = (
@@ -129,3 +132,11 @@ def tag_message(text: str, llm=None) -> Tag:
         log.warning("sentiment tagging failed: %s", exc)
         return Tag()
     return parse_tag(raw)
+
+
+# Hindi / Telugu keywords (app/lang_text.py)
+for _c, _kws in _lt.CONCERN_KEYWORDS.items():
+    CONCERN_KEYWORDS[_c].extend(_kws)
+NEGATIVE.extend(_lt.NEGATIVE)
+STRONG_NEGATIVE.extend(_lt.STRONG_NEGATIVE)
+POSITIVE.extend(_lt.POSITIVE)

@@ -29,7 +29,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-KANNADA_DIGITS = str.maketrans("೦೧೨೩೪೫೬೭೮೯", "0123456789")
+# Kannada, Devanagari (Hindi) and Telugu digits → Western digits.
+KANNADA_DIGITS = str.maketrans("೦೧೨೩೪೫೬೭೮೯०१२३४५६७८९౦౧౨౩౪౫౬౭౮౯", "0123456789" * 3)
 SMALL_INT_MAX = 10
 SCHOOL_CLASSES = {8, 10, 12}
 
@@ -37,19 +38,24 @@ UNIT_MULT = {
     "k": 1_000, "thousand": 1_000, "ಸಾವಿರ": 1_000,
     "lakh": 100_000, "lakhs": 100_000, "lac": 100_000, "lacs": 100_000, "ಲಕ್ಷ": 100_000,
     "crore": 10_000_000, "crores": 10_000_000, "ಕೋಟಿ": 10_000_000,
+    # Hindi
+    "हज़ार": 1_000, "हजार": 1_000, "लाख": 100_000, "करोड़": 10_000_000,
+    # Telugu
+    "వేలు": 1_000, "వేల": 1_000, "హజార్": 1_000, "లక్షలు": 100_000, "లక్ష": 100_000, "కోట్లు": 10_000_000, "కోటి": 10_000_000,
 }
-PCT_UNITS = {"%", "percent", "per cent", "ಶೇಕಡಾ", "ಶೇ"}
+PCT_UNITS = {"%", "percent", "per cent", "ಶೇಕಡಾ", "ಶೇ", "प्रतिशत", "फ़ीसदी", "फीसदी", "శాతం"}
 
 NUM = r"\d[\d,]*(?:\.\d+)?"
-UNIT = r"%|per\s?cent|k(?![a-z])|thousand|ಸಾವಿರ|lakhs?|lacs?|ಲಕ್ಷ|crores?|ಕೋಟಿ"
+UNIT = (r"%|per\s?cent|k(?![a-z])|thousand|ಸಾವಿರ|lakhs?|lacs?|ಲಕ್ಷ|crores?|ಕೋಟಿ"
+        r"|प्रतिशत|फ़ीसदी|फीसदी|हज़ार|हजार|लाख|करोड़|శాతం|వేలు|వేల|హజార్|లక్షలు|లక్ష|కోట్లు|కోటి")
 CLAIM_RE = re.compile(
     rf"(?P<pct_pre>ಶೇಕಡಾ|ಶೇ\.?)?\s*(?P<cur>₹|rs\.?|inr)?\s*(?P<num>{NUM})"
-    rf"(?:\s*(?P<dash>-|–|—|to|ರಿಂದ)\s*(?:₹|rs\.?)?\s*(?P<num2>{NUM}))?"
+    rf"(?:\s*(?P<dash>-|–|—|to|ರಿಂದ|से|నుండి)\s*(?:₹|rs\.?)?\s*(?P<num2>{NUM}))?"
     rf"\s*(?P<unit>{UNIT})?",
     re.IGNORECASE,
 )
-CLASS_CONTEXT_RE = re.compile(r"(class|std\.?|standard|grade|ತರಗತಿ)\s*$", re.IGNORECASE)
-CLASS_SUFFIX_RE = re.compile(r"^\s*(th|st|nd|rd|ನೇ|ನೆಯ)", re.IGNORECASE)
+CLASS_CONTEXT_RE = re.compile(r"(class|std\.?|standard|grade|ತರಗತಿ|कक्षा|क्लास|తరగతి)\s*$", re.IGNORECASE)
+CLASS_SUFFIX_RE = re.compile(r"^\s*(th|st|nd|rd|ನೇ|ನೆಯ|वीं|वी|వ)", re.IGNORECASE)
 PLAIN_NUM_RE = re.compile(NUM)
 APPROX_RE = re.compile(
     r"(about|around|approx\.?|approximately|roughly|nearly|close to|almost|"
@@ -90,7 +96,7 @@ def _normalise_unit(u: str | None) -> str | None:
     if not u:
         return None
     u = u.lower().replace(" ", "")
-    return {"percent": "%", "percent.": "%"}.get(u, u)
+    return "%" if u in {"percent", "percent.", "प्रतिशत", "फ़ीसदी", "फीसदी", "శాతం"} else u
 
 
 def extract_claims(text: str) -> list[Claim]:
@@ -184,3 +190,7 @@ FALLBACK_TEXT = {
     "kn": "ಅಂಕಿಅಂಶಗಳಲ್ಲಿ ನಾನು ಎಚ್ಚರಿಕೆಯಿಂದ ಇರಬೇಕು; ಇದನ್ನು ಖಚಿತಪಡಿಸಲು ಆಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಕೆಳಗಿನ ಕಾರ್ಡ್ ನೋಡಿ. "
           "ಸಲಹೆಗಾರರು ಸಹಾಯ ಮಾಡಬಹುದು — ಬೇಕೇ?",
 }
+
+from .lang_text import FALLBACK_TEXT as _FB  # noqa: E402
+
+FALLBACK_TEXT.update(_FB)

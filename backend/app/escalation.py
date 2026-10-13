@@ -12,6 +12,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import models as m
+from .i18n import LANG_NAMES, norm_lang, tr
+from .lang_text import SUMMARY
+from seed.reference_data import DISTRICT_NAMES
 
 log = logging.getLogger(__name__)
 
@@ -49,8 +52,9 @@ def main_concern(db: Session, s: m.SessionRow) -> str:
     return (s.top_concerns or ["other"])[0]
 
 
-def build_summary(db: Session, s: m.SessionRow, trigger: str) -> tuple[str, str]:
-    """Three plain lines in English and Kannada: who/where/concern, what was answered, why escalated."""
+def build_summary(db: Session, s: m.SessionRow, trigger: str) -> tuple[str, str, str]:
+    """Three plain lines, always in English (for the counsellor) and in the session language:
+    who/where/concern, what was answered, why escalated. Returns (english, local, local_language)."""
     concern = main_concern(db, s)
     shown: list[tuple[str, str]] = []  # (card type, trade slug)
     for msg in db.scalars(select(m.Message).where(m.Message.session_id == s.id, m.Message.role == "assistant")):
@@ -60,19 +64,22 @@ def build_summary(db: Session, s: m.SessionRow, trigger: str) -> tuple[str, str]
             key = (c.get("type"), c.get("data", {}).get("trade_slug", ""))
             if key not in shown:
                 shown.append(key)
-    names = {t.slug: (t.name_en, t.name_kn) for t in db.scalars(select(m.Trade))}
-    lang_en = "Kannada" if s.language == "kn" else "English"
-    lang_kn = "ಕನ್ನಡ" if s.language == "kn" else "ಇಂಗ್ಲಿಷ್"
-    answered_en = "; ".join(f"{CARD_EN.get(t, t)} – {names.get(n, (n, n))[0]}" for t, n in shown[:4]) or "nothing yet"
-    answered_kn = "; ".join(f"{CARD_KN.get(t, t)} – {names.get(n, (n, n))[1]}" for t, n in shown[:4]) or "ಇನ್ನೂ ಏನೂ ಇಲ್ಲ"
-    why_en, why_kn = TRIGGER_TEXT.get(trigger, (trigger, trigger))
-    en = (f"Language: {lang_en} · District: {s.district} · Main concern: {concern.replace('_', ' ')}\n"
+    names = {t.slug: t.names or {} for t in db.scalars(select(m.Trade))}
+    lang = norm_lang(s.language)
+    why_en = TRIGGER_TEXT.get(trigger, (trigger, trigger))[0]
+    answered_en = "; ".join(f"{CARD_EN.get(t, t)} – {tr(names.get(n, {'en': n}), 'en')}" for t, n in shown[:4]) or "nothing yet"
+    en = (f"Language: {LANG_NAMES[lang]} · District: {s.district} · Main concern: {concern.replace('_', ' ')}\n"
           f"Answered so far: {answered_en}\n"
           f"Escalated because: {why_en}")
-    kn = (f"ಭಾಷೆ: {lang_kn} · ಜಿಲ್ಲೆ: {DISTRICT_KN.get(s.district, s.district)} · ಮುಖ್ಯ ಚಿಂತೆ: {CONCERN_KN.get(concern, concern)}\n"
-          f"ಇಲ್ಲಿಯವರೆಗೆ ಉತ್ತರಿಸಿದ್ದು: {answered_kn}\n"
-          f"ಸಲಹೆಗಾರರಿಗೆ ಕಳುಹಿಸಿದ ಕಾರಣ: {why_kn}")
-    return en, kn
+    if lang == "en":
+        return en, en, "en"
+    L = SUMMARY[lang]
+    answered = "; ".join(f"{L['cards'].get(t, t)} – {tr(names.get(n, {'en': n}), lang, 'trade.names')}" for t, n in shown[:4]) \
+        or L["nothing"]
+    local = L["lines"].format(lang=L["langs"][lang], district=tr(DISTRICT_NAMES.get(s.district, {"en": s.district}), lang, "district"),
+                              concern=L["concerns"].get(concern, concern), answered=answered,
+                              why=L["triggers"].get(trigger, trigger))
+    return en, local, lang
 
 
 def create_case(db: Session, s: m.SessionRow, trigger: str) -> tuple[m.Escalation, bool]:
@@ -82,8 +89,9 @@ def create_case(db: Session, s: m.SessionRow, trigger: str) -> tuple[m.Escalatio
     existing = open_case(db, s.id)
     if existing:
         return existing, False
-    en, kn = build_summary(db, s, trigger)
-    case = m.Escalation(session_id=s.id, trigger=trigger, status="pending", summary_en=en, summary_kn=kn)
+    en, local, lang = build_summary(db, s, trigger)
+    case = m.Escalation(session_id=s.id, trigger=trigger, status="pending", summary_en=en, summary_local=local,
+                        summary_language=lang)
     s.escalated = True
     db.add(case)
     db.add(m.Event(session_id=s.id, event_type="escalated", payload={"trigger": trigger}))

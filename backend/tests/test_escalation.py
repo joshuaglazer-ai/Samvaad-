@@ -26,7 +26,7 @@ def test_escalate_creates_case_with_bilingual_summary(client):
     q = client.get("/api/counsellor/queue", headers=C).json()
     case = next(c for c in q if c["id"] == info["id"])
     assert case["district"] == "Dharwad" and case["language"] == "kn"
-    assert "Dharwad" in case["summary_en"] and "ಧಾರವಾಡ" in case["summary_kn"]
+    assert "Dharwad" in case["summary_en"] and "ಧಾರವಾಡ" in case["summary_local"] and case["summary_language"] == "kn"
     assert "earnings & placement – Electrician" in case["summary_en"]
     assert len(case["summary_en"].splitlines()) == 3
 

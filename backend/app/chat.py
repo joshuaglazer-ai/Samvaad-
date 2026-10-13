@@ -15,7 +15,9 @@ from . import models as m
 from .alignment import session_alignment
 from .data_tools import TOOL_SCHEMAS, DataTools
 from .escalation import case_info, check_triggers, create_case
+from . import lang_text as _lt
 from .guardrail import FALLBACK_TEXT, check, correction_note
+from .i18n import detect_script, norm_lang
 from .llm import BaseLLM, LLMResponse, get_llm
 from .mock_counsellor import INTEREST_TO_TRADE
 from .prompts import SYSTEM_PROMPT, context_block
@@ -122,7 +124,8 @@ def build_card(tool: str, out: dict, language: str) -> dict | None:
         return {"type": "outcome",
                 "data": {**rec, "trade_slug": out["trade_slug"], "trade_name": out["trade_name"],
                          "district_requested": out.get("district_requested"),
-                         "fallback_note": next((x for x in out.get("limitations", []) if "District" in x or "ಜಿಲ್ಲಾ" in x), None),
+                         "fallback_note": next((t for c, t in zip(out.get("limitation_codes", []), out.get("limitations", []))
+                                                if c in ("state_fallback", "national_fallback")), None),
                          "history": [{"year": r["year"], "reporting_period": r["reporting_period"],
                                       "placement_rate": r["placement_rate"], "earnings_median": r["earnings_median"]}
                                      for r in out["records"]]},
@@ -149,7 +152,7 @@ def build_card(tool: str, out: dict, language: str) -> dict | None:
 
 
 def quick_replies(cards: list[dict], language: str, escalated: bool) -> list[str]:
-    q = QUICK["kn" if language == "kn" else "en"]
+    q = QUICK.get(language, QUICK["en"])
     shown = {c["type"] for c in cards if not c["data"].get("unavailable")}
     order = ["outcome", "ladder", "costs", "providers"]
     picks = [q[k] for k in order if k not in shown][:2] if shown else [q["outcome"], q["ladder"]]
@@ -187,7 +190,13 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     s = db.get(m.SessionRow, session_id)
     if s is None:
         raise LookupError("session not found")
-    language = "kn" if language == "kn" else "en"
+    language = norm_lang(language)
+    # If someone writes in a different supported script than the session language, answer in the language they
+    # used and offer to switch (Latin text is ambiguous — English or transliteration — so it never switches).
+    written_in = detect_script(text)
+    suggest_language = written_in if written_in and written_in != language else None
+    if suggest_language:
+        language = suggest_language
 
     tag = tag_message(text, llm)
     user_msg = m.Message(session_id=s.id, role="user", speaker=speaker, text=text, language=language,
@@ -245,6 +254,9 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     if flagged and escalation is None:
         on_escalate(flagged)
 
+    if suggest_language:
+        reply = f"{reply} {_lt.SWITCH_OFFER[suggest_language]}"
+
     cards: list[dict] = []
     for name, out, _ in outputs:
         card = build_card(name, out, language)
@@ -262,7 +274,7 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         trigger = check_triggers(db, s)
         if trigger:
             on_escalate(trigger)
-    if escalation and "counsel" not in reply.lower() and "ಸಲಹೆಗಾರ" not in reply:
+    if escalation and not any(w in reply.lower() for w in ("counsel", "ಸಲಹೆಗಾರ", "काउंसलर", "కౌన్సిలర్")):
         reply = f"{reply} {ESCALATION_LINE[language]}"
         assistant.text = reply
 
@@ -281,5 +293,10 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         "quick_replies": quick_replies(cards, language, escalated=escalation is not None),
         "guardrail_status": status,
         "escalation": escalation,
+        "reply_language": language,
+        "suggest_language": suggest_language,
     }
 
+
+QUICK.update(_lt.QUICK)
+ESCALATION_LINE.update(_lt.ESCALATION_LINE)

@@ -235,7 +235,8 @@ T = {
 
 
 def _district_name(d: str | None, lang: str) -> str:
-    return DISTRICT_KN.get(d or "", d or "") if lang == "kn" else (d or "")
+    names = DISTRICT_NAMES.get(d or "")
+    return tr(names, lang, "district") if names else (d or "")
 
 
 def _fallback_note(res: dict, t: dict) -> str:
@@ -255,12 +256,13 @@ def _src(res: dict, rec: dict, t: dict) -> str:
 
 
 def reassure(concern: str, ctx: dict, lang: str) -> str:
+    lang = lang if lang in REASSURE else "en"
     options = REASSURE[lang].get(concern) or REASSURE[lang]["other"]
     return options[ctx.get("turn", 0) % len(options)]
 
 
 def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
-    lang = "kn" if ctx.get("language") == "kn" else "en"
+    lang = ctx.get("language") if ctx.get("language") in T else "en"
     t = T[lang]
     concern = keyword_concern(user_text) or "other"
 
@@ -341,3 +343,19 @@ def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
         fact, question = t["options"].format(names=", ".join(names)), t["q_options"]
 
     return f"{opener} {fact.strip()}{question}"
+
+
+# ---------------------------------------------------------------- Hindi / Telugu (text lives in app/lang_text.py)
+from . import lang_text as _lt  # noqa: E402
+from .i18n import tr  # noqa: E402
+from seed.reference_data import DISTRICT_NAMES  # noqa: E402
+
+T.update(_lt.MOCK_T)
+REASSURE.update(_lt.REASSURE)
+ALIGN_LABEL.update(_lt.ALIGN_LABEL)
+for _slug, _kws in TRADE_KEYWORDS:
+    _kws.extend(_lt.TRADE_KEYWORDS.get(_slug, []))
+for _slug, _kws in _lt.OTHER_TRADES.items():
+    OTHER_TRADES.setdefault(_slug, []).extend(_kws)
+for _k, _kws in _lt.INTENT_PATTERNS.items():
+    INTENT_PATTERNS[_k].extend(_kws)

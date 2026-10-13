@@ -19,14 +19,14 @@ All monetary values are Indian Rupees (INR). Earnings are stored per `earnings_b
 | Field | Type | Meaning |
 |---|---|---|
 | slug | text, unique | Stable ID used by tools, e.g. `electrician` |
-| name_en / name_kn | text | Display names |
+| names | JSON `{en, kn, hi, te}` | Display names (missing language → English, logged) |
 | sector | text | `Electrical`, `Automotive`, `Healthcare`, `Green Energy` |
 | nsqf_level | int | Indicative NSQF level ("a national ladder of skill levels") |
 | qualification_code, awarding_body | text NULL | **Left NULL** until verified on nqr.gov.in — never invented |
 | duration_months | int | Course length |
-| entry_requirement_en/kn | text | Plain-language requirement |
+| entry_requirement | JSON `{lang: text}` | Plain-language requirement |
 | entry_min_education | enum | Structured minimum (`class_8`…`graduate`) used for eligibility |
-| job_roles_en/kn | JSON list | Typical first jobs |
+| job_roles | JSON `{lang: [role, …]}` | Typical first jobs |
 | icon | text | Icon name used by the UI |
 
 ### providers
@@ -53,10 +53,10 @@ All monetary values are Indian Rupees (INR). Earnings are stored per `earnings_b
 | source_id, data_status, verified_on | Evidence trail |
 
 ### progression_steps
-`trade_id, step_order, kind (job|upskill|apprenticeship|diploma|degree), title_en/kn, nsqf_level, entry_requirement_en/kn, entry_min_education, duration_months, source_id`.
+`trade_id, step_order, kind (job|upskill|apprenticeship|diploma|degree), titles {lang: text}, nsqf_level, entry_requirement {lang: text}, entry_min_education, duration_months, source_id`.
 
 ### costs_support
-`trade_id, district (NULL = state-wide), fee_min, fee_max, support_type (scheme|stipend|scholarship|none), description_en/kn, source_id, data_status, income_brackets` (JSON; empty = applies to all incomes). Rows with `support_type=none` carry the fee band.
+`trade_id, district (NULL = state-wide), fee_min, fee_max, support_type (scheme|stipend|scholarship|none), description {lang: text}, source_id, data_status, income_brackets` (JSON; empty = applies to all incomes). Rows with `support_type=none` carry the fee band.
 
 ## Engagement tables
 
@@ -83,7 +83,8 @@ One row per data-tool call that returned `found=False`: `trade_slug, district, c
 
 ### escalations
 `trigger (user_request|no_data|negative_sentiment|sensitive_topic|repeated_failure)`,
-`status (pending|assigned|in_progress|resolved)`, `summary_en/kn` (3 lines), `assigned_to`, timestamps.
+`status (pending|assigned|in_progress|resolved)`, `summary_en` (3 lines, always English, for the counsellor),
+`summary_local` + `summary_language` (the same 3 lines in the session language), `assigned_to`, timestamps.
 
 ### callback_requests
 Stored separately from sessions. `phone_encrypted` (Fernet), `preferred_time`, `consent`, `deleted_at`

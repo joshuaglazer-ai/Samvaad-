@@ -16,7 +16,7 @@ from app.schema_setup import upgrade_to_head
 
 from .reference_data import (
     DISTRICT_FACTORS, FEES, LADDERS, MISSING_DISTRICT, MISSING_STATE, MISSING_YEAR, NATIONAL_ROWS,
-    PROVIDER_GAPS, PROVIDER_TEMPLATES, TRADES, YEARS,
+    PROVIDER_GAPS, PROVIDER_TEMPLATES, TRADES, YEARS, COST_TEXT,
 )
 
 DEMO_SOURCE_TITLE = "SAMVAAD simulated demo dataset"
@@ -100,20 +100,17 @@ def seed(db: Session, rng_seed: int = 42) -> dict:
             lo, hi = FEES[t["slug"]]
             db.add(m.CostSupport(
                 trade_id=trade.id, district=None, fee_min=lo, fee_max=hi, support_type="none",
-                description_en="Course fee range across demo training centres. Government-run courses are often free.",
-                description_kn="ಡೆಮೊ ತರಬೇತಿ ಕೇಂದ್ರಗಳ ಕೋರ್ಸ್ ಶುಲ್ಕದ ವ್ಯಾಪ್ತಿ. ಸರ್ಕಾರಿ ಕೋರ್ಸ್‌ಗಳು ಹಲವು ಬಾರಿ ಉಚಿತ.",
+                description=COST_TEXT["fee"],
                 source_id=src.id, data_status="demo", income_brackets=[],
             ))
             db.add(m.CostSupport(
                 trade_id=trade.id, district=None, fee_min=0, fee_max=0, support_type="scheme",
-                description_en="Free training under a government skill scheme for eligible families (demo entry — verify the scheme name).",
-                description_kn="ಅರ್ಹ ಕುಟುಂಬಗಳಿಗೆ ಸರ್ಕಾರಿ ಕೌಶಲ ಯೋಜನೆಯಡಿ ಉಚಿತ ತರಬೇತಿ (ಡೆಮೊ ಮಾಹಿತಿ — ಯೋಜನೆಯ ಹೆಸರು ಪರಿಶೀಲಿಸಬೇಕು).",
+                description=COST_TEXT["scheme"],
                 source_id=src.id, data_status="demo", income_brackets=["<1.5L", "1.5-3L"],
             ))
             db.add(m.CostSupport(
                 trade_id=trade.id, district=None, fee_min=None, fee_max=None, support_type="stipend",
-                description_en="Apprentices receive a monthly stipend from the employer during apprenticeship (demo entry).",
-                description_kn="ಅಪ್ರೆಂಟಿಸ್‌ಶಿಪ್ ಸಮಯದಲ್ಲಿ ಉದ್ಯೋಗದಾತರಿಂದ ಮಾಸಿಕ ಸ್ಟೈಪೆಂಡ್ ಸಿಗುತ್ತದೆ (ಡೆಮೊ ಮಾಹಿತಿ).",
+                description=COST_TEXT["stipend"],
                 source_id=src.id, data_status="demo", income_brackets=[],
             ))
             counts["costs"] += 3
@@ -121,8 +118,7 @@ def seed(db: Session, rng_seed: int = 42) -> dict:
             db.add(m.CostSupport(
                 trade_id=trade.id, district="Bengaluru Urban", fee_min=lo, fee_max=round_to(hi * 1.3),
                 support_type="none",
-                description_en="Course fee range in Bengaluru Urban demo centres.",
-                description_kn="ಬೆಂಗಳೂರು ನಗರದ ಡೆಮೊ ಕೇಂದ್ರಗಳಲ್ಲಿ ಕೋರ್ಸ್ ಶುಲ್ಕದ ವ್ಯಾಪ್ತಿ.",
+                description=COST_TEXT["blr_fee"],
                 source_id=src.id, data_status="demo", income_brackets=[],
             ))
             counts["costs"] += 1

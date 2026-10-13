@@ -18,8 +18,11 @@
   --color-info-600: #3E5BA9;
   --color-danger-600: #B3261E;
 
-  --font-sans: "Plus Jakarta Sans", "Noto Sans Kannada", system-ui, sans-serif;
-  --font-kannada: "Noto Sans Kannada", "Plus Jakarta Sans", system-ui, sans-serif;
+  /* Latin first; each Indic script falls through to its own Noto family, so mixed text renders correctly. */
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Kannada", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
+  --font-kannada: "Noto Sans Kannada", "Plus Jakarta Sans", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
+  --font-devanagari: "Noto Sans Devanagari", "Plus Jakarta Sans", "Noto Sans Kannada", "Noto Sans Telugu", system-ui, sans-serif;
+  --font-telugu: "Noto Sans Telugu", "Plus Jakarta Sans", "Noto Sans Kannada", "Noto Sans Devanagari", system-ui, sans-serif;
 
   --radius-card: 22px;
   --shadow-soft: 0 10px 30px -12px rgb(107 79 196 / 0.28);
@@ -77,7 +80,15 @@ body {
   background: var(--bg-gradient) fixed;
   -webkit-font-smoothing: antialiased;
 }
-html[lang="kn"] body { font-family: var(--font-kannada); line-height: 1.65; }
+/* Indic scripts have tall stacked vowel signs and conjuncts above and below the line: give them more line height
+   so nothing is clipped (headings use tight leading in Latin, so they are relaxed here too). */
+html[lang="kn"] body { font-family: var(--font-kannada); line-height: 1.7; }
+html[lang="hi"] body { font-family: var(--font-devanagari); line-height: 1.75; }
+html[lang="te"] body { font-family: var(--font-telugu); line-height: 1.8; }
+html:is([lang="kn"], [lang="hi"], [lang="te"]) :is(h1, h2, h3, .leading-tight, .leading-snug) { line-height: 1.45; }
+:lang(hi) { font-family: var(--font-devanagari); }
+:lang(te) { font-family: var(--font-telugu); }
+:lang(kn) { font-family: var(--font-kannada); }
 
 /* Static star layer: a pre-rendered image of the same Yale Bright Star Catalogue sky (scripts/build-stars.mts).
    Always present; it is the background when WebGL is off (Lite mode) and on screens without the live sky. */

@@ -30,7 +30,7 @@ export function VoiceMissingNotice() {
   return (
     <p role="status" className="mt-2 flex items-center gap-2 rounded-xl bg-star-400/25 px-3 py-2 text-sm text-ink-900">
       <Icon name="info" size={18} />
-      <span>{t("chat.knVoiceMissing")}</span>
+      <span>{t("chat.voiceMissing")}</span>
     </p>
   );
 }

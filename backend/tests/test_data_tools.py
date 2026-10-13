@@ -112,7 +112,7 @@ def test_trade_resolution_by_name_and_alias_district(db):
 def test_list_trades(db):
     r = DataTools(db, language="kn").list_trades(sector="Healthcare")
     assert r["found"] and len(r["records"]) == 2
-    assert all(rec["name"] == rec["name_kn"] for rec in r["records"])
+    assert all(rec["name"] == rec["names"]["kn"] for rec in r["records"])
 
 
 def test_execute_handles_bad_args(db):

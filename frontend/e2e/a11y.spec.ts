@@ -20,7 +20,7 @@ test("landing has no serious a11y violations", async ({ page }) => {
 
 test("onboarding (Kannada) has no serious a11y violations", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "ಕನ್ನಡ", exact: true }).click();
+  await page.getByRole("radio", { name: "ಕನ್ನಡ", exact: true }).click();
   await page.getByRole("button", { name: /ಒಟ್ಟಿಗೆ ಪ್ರಾರಂಭಿಸಿ/ }).click();
   await scan(page);
 });

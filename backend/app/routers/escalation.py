@@ -185,7 +185,8 @@ def case_out(db: Session, c: m.Escalation) -> dict:
                                                           m.CallbackRequest.deleted_at.is_(None)).limit(1)) is not None
     created = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=now().tzinfo)
     return {"id": c.id, "session_id": c.session_id, "trigger": c.trigger, "status": c.status,
-            "summary_en": c.summary_en, "summary_kn": c.summary_kn, "assigned_to": c.assigned_to,
+            "summary_en": c.summary_en, "summary_local": c.summary_local, "summary_language": c.summary_language,
+            "assigned_to": c.assigned_to,
             "created_at": created.isoformat(), "waiting_minutes": int((now() - created).total_seconds() // 60),
             "district": s.district if s else "", "language": s.language if s else "en", "has_callback": has_cb}
 

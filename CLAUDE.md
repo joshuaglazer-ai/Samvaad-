@@ -23,8 +23,10 @@ Decisions go in `docs/decisions.md`. Data fields in `docs/data_dictionary.md`. S
 7. **Privacy**: no names, random session UUIDs, phone only on callback opt-in (encrypted, separate table,
    deletable). One-line consent notice at onboarding (DPDP Act).
 8. **Secrets** only in `.env`, read by the backend. The frontend never calls the LLM.
-9. **Kannada** UI strings live in `frontend/src/i18n/kn.json` with `"_review_status": "needs_native_review"`.
-   Natural Kannada, not word-for-word.
+9. **Four languages: English, Kannada, Hindi, Telugu** (`en`, `kn`, `hi`, `te`; voice `*-IN`). UI strings in
+   `frontend/src/i18n/{en,kn,hi,te}.json`; kn/hi/te carry `"_review_status": "needs_native_review"`. Backend text in
+   `app/lang_text.py` and DB text as `{lang: text}` JSON (missing → English, logged). Everyday spoken language
+   (Hindi: not Sanskritised). Never word-for-word.
 10. App must run fully with `LLM_MODE=mock` (no API key). Mock still calls real data tools.
 11. Do not add: vector DBs, fine-tuning, multi-agent frameworks, LangChain, WhatsApp, user accounts.
 

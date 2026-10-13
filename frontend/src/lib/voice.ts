@@ -2,9 +2,9 @@
  * Voice in/out behind a small interface so a server-side provider (e.g. Bhashini) can be plugged in later.
  * Browser implementation: Web Speech API (SpeechRecognition) + speechSynthesis. Everything is feature-detected.
  */
-export type VoiceLang = "en" | "kn";
+export type VoiceLang = "en" | "kn" | "hi" | "te";
 
-export const LOCALE: Record<VoiceLang, string> = { en: "en-IN", kn: "kn-IN" };
+export const LOCALE: Record<VoiceLang, string> = { en: "en-IN", kn: "kn-IN", hi: "hi-IN", te: "te-IN" };
 
 export interface ListenHandlers {
   onInterim?: (text: string) => void;
@@ -46,7 +46,7 @@ export function pickVoice<T extends { lang: string; localService?: boolean }>(vo
   const want = LOCALE[lang].toLowerCase();
   const exact = voices.filter((v) => v.lang.toLowerCase().replace("_", "-") === want);
   if (exact.length) return exact.find((v) => v.localService) ?? exact[0];
-  const prefix = lang === "kn" ? "kn" : "en-in";
+  const prefix = lang === "en" ? "en-in" : lang;
   const loose = voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(prefix));
   if (loose) return loose;
   return lang === "en" ? voices.find((v) => v.lang.toLowerCase().startsWith("en")) : undefined;
