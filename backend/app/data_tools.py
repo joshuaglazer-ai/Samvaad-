@@ -215,6 +215,41 @@ class DataTools:
         return {"found": True, "records": records, "geo_level_used": None, "data_status": "demo",
                 "source": None, "limitations": [], "limitation_codes": []}
 
+    def trade_terms(self) -> list:
+        """Every trade with its names and synonyms in all languages, for aspiration matching."""
+        from .aspiration import TradeTerms
+
+        trades = {t.id: TradeTerms(slug=t.slug, names=t.names or {}, sector=t.sector,
+                                   terms=[(lang, n) for lang, n in (t.names or {}).items() if n])
+                  for t in self.db.scalars(select(m.Trade).order_by(m.Trade.slug))}
+        for syn in self.db.scalars(select(m.TradeSynonym)):
+            if syn.trade_id in trades:
+                trades[syn.trade_id].terms.append((syn.language, syn.term))
+        return list(trades.values())
+
+    def match_aspiration(self, text: str, language: str | None = None, district: str | None = None,
+                         llm=None) -> dict:
+        """Match the learner's own words to database trades (never invented). Unmatched → evidence gap."""
+        from . import aspiration
+        from .llm import get_llm
+
+        lang = norm_lang(language or self.ctx.language)
+        text = (text or "").strip()[:300]
+        if not text:
+            return {"found": False, "matched": False, "category": "unknown", "candidates": [], "related": [],
+                    "text": text, "language": lang, "confidence": 0.0, "error": "empty text"}
+        trades = self.trade_terms()
+        llm = llm or get_llm()
+        result = aspiration.match_fuzzy(text, lang, trades) if llm.is_mock             else aspiration.match_with_model(text, lang, trades, llm)
+        if not result["matched"]:
+            if district is None and self.ctx.session_id:
+                row = self.db.get(m.SessionRow, self.ctx.session_id)
+                district = row.district if row else None
+            self._gap("match_aspiration", None, normalise_district(district),
+                      {"aspiration_text": text, "language": lang, "category": result["category"]})
+        return {"found": result["matched"], "data_status": None, "source": None, "limitations": [],
+                "limitation_codes": [] if result["matched"] else ["no_data"], **result}
+
     def get_trade_outcomes(self, trade_slug: str, district: str | None = None) -> dict:
         district = normalise_district(district)
         query = {"trade_slug": trade_slug, "district": district}
@@ -386,6 +421,7 @@ class DataTools:
             "get_progression": self.get_progression,
             "get_providers": self.get_providers,
             "get_costs_and_support": self.get_costs_and_support,
+            "match_aspiration": self.match_aspiration,
         }.get(name)
         if fn is None:
             return {"found": False, "error": f"unknown tool {name}"}
@@ -399,6 +435,16 @@ class DataTools:
 
 # Anthropic tool definitions (JSON Schema). The `escalate` tool is handled in chat.py.
 TOOL_SCHEMAS: list[dict] = [
+    {
+        "name": "match_aspiration",
+        "description": "Match what the learner says they want to do or become (their own words, any language) to "
+                       "trades in the database. Returns up to 3 candidates with matched true/false and a category "
+                       "(vocational_match | degree_career | unknown). Never suggest a trade that is not returned.",
+        "input_schema": {"type": "object", "properties": {
+            "text": {"type": "string"},
+            "language": {"type": "string", "enum": ["en", "kn", "hi", "te"]},
+        }, "required": ["text"], "additionalProperties": False},
+    },
     {
         "name": "list_trades",
         "description": "List the vocational trades available in the pilot, optionally filtered by sector. "

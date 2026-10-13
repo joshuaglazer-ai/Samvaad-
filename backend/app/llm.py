@@ -42,6 +42,10 @@ class BaseLLM:
     def quick_json(self, system: str, text: str) -> str:
         raise NotImplementedError
 
+    def structured_json(self, system: str, text: str, schema: dict) -> str:
+        """Fast-model answer constrained to a JSON schema (structured outputs)."""
+        raise NotImplementedError
+
 
 class MockLLM(BaseLLM):
     """Deterministic stand-in: plans real tool calls, then narrates only from their results."""
@@ -117,6 +121,16 @@ class AnthropicLLM(BaseLLM):
             messages=[{"role": "user", "content": text}],
             output_config={"effort": "low"},  # classification: minimal thinking
         )
+        return "".join(b.text for b in resp.content if b.type == "text")
+
+    def structured_json(self, system, text, schema) -> str:
+        resp = self.client.messages.create(
+            model=self.settings.anthropic_fast_model, max_tokens=1024, system=system,
+            messages=[{"role": "user", "content": text}],
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
+        )
+        if resp.stop_reason == "refusal":
+            raise RuntimeError("model declined the classification")
         return "".join(b.text for b in resp.content if b.type == "text")
 
 

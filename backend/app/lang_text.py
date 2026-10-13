@@ -231,3 +231,52 @@ SUMMARY = {
                         "sensitive_topic": "ఒక సున్నితమైన విషయం వచ్చింది (భద్రత, కుటుంబం, అప్పు లేదా బాధ).",
                         "repeated_failure": "సహాయకం రెండుసార్లు నిర్ధారించిన సమాధానం ఇవ్వలేకపోయింది."}},
 }
+
+# ---------------------------------------------------------------- Update 3: matching the learner's own goal
+# Careers that usually need a degree or professional course. Matching them never forces a vocational trade; the goal
+# is respected and a counsellor is offered. `related_sector` (a sectors.slug, optional) is only used to offer related
+# skill options if the family wants them. Romanised forms are what people type on phones. Needs native review.
+DEGREE_CAREERS = {
+    "doctor": {"related_sector": "healthcare", "terms": {
+        "en": ["doctor", "mbbs", "surgeon", "physician", "dentist"],
+        "kn": ["ಡಾಕ್ಟರ್", "ವೈದ್ಯ", "daktru", "vaidya"],
+        "hi": ["डॉक्टर", "डाक्टर", "चिकित्सक", "daktar", "doktar"],
+        "te": ["డాక్టర్", "వైద్యుడు", "వైద్యురాలు", "daktaru"]}},
+    "nurse": {"related_sector": "healthcare", "terms": {
+        "en": ["nurse", "nursing", "staff nurse", "bsc nursing", "gnm"],
+        "kn": ["ನರ್ಸ್", "ದಾದಿ", "nursu"],
+        "hi": ["नर्स", "नर्सिंग"],
+        "te": ["నర్సు", "నర్స్", "నర్సింగ్"]}},
+    "engineer": {"related_sector": None, "terms": {
+        "en": ["engineer", "engineering", "btech", "b tech", "be degree"],
+        "kn": ["ಎಂಜಿನಿಯರ್", "ಇಂಜಿನಿಯರ್", "ಎಂಜಿನಿಯರಿಂಗ್", "injiniyar"],
+        "hi": ["इंजीनियर", "इंजीनियरिंग", "injiniyar", "injinear"],
+        "te": ["ఇంజనీర్", "ఇంజినీర్", "ఇంజనీరింగ్", "injaneer"]}},
+    "teacher": {"related_sector": None, "terms": {
+        "en": ["teacher", "teaching", "lecturer", "professor", "bed degree"],
+        "kn": ["ಶಿಕ್ಷಕ", "ಶಿಕ್ಷಕಿ", "ಟೀಚರ್", "ಮೇಷ್ಟ್ರು", "meshtru"],
+        "hi": ["टीचर", "शिक्षक", "अध्यापक", "मास्टर जी", "adhyapak"],
+        "te": ["టీచర్", "ఉపాధ్యాయుడు", "ఉపాధ్యాయురాలు", "మాస్టారు"]}},
+    "police": {"related_sector": None, "terms": {
+        "en": ["police", "police officer", "sub inspector", "ips officer", "constable"],
+        "kn": ["ಪೊಲೀಸ್", "ಪೋಲೀಸ್", "polisu"],
+        "hi": ["पुलिस", "दरोगा", "polis", "pulis"],
+        "te": ["పోలీస్", "పోలీసు", "polisu"]}},
+    "lawyer": {"related_sector": None, "terms": {
+        "en": ["lawyer", "advocate", "llb", "judge"],
+        "kn": ["ವಕೀಲ", "ಲಾಯರ್", "vakeela"],
+        "hi": ["वकील", "vakil", "vakeel"],
+        "te": ["లాయర్", "న్యాయవాది", "vakeelu"]}},
+    "officer": {"related_sector": None, "terms": {
+        "en": ["ias", "kas officer", "government officer", "collector", "civil services"],
+        "kn": ["ಐಎಎಸ್", "ಸರ್ಕಾರಿ ಅಧಿಕಾರಿ", "ಜಿಲ್ಲಾಧಿಕಾರಿ"],
+        "hi": ["आईएएस", "कलेक्टर", "सरकारी अफसर", "सरकारी अधिकारी"],
+        "te": ["ఐఏఎస్", "కలెక్టర్", "ప్రభుత్వ అధికారి"]}},
+}
+
+MATCH_REASON = {
+    "en": {"term": "Matches your words: “{term}”", "model": "Close to what you said"},
+    "kn": {"term": "ನಿಮ್ಮ ಮಾತಿಗೆ ಹೊಂದುತ್ತದೆ: “{term}”", "model": "ನೀವು ಹೇಳಿದ್ದಕ್ಕೆ ಹತ್ತಿರ"},
+    "hi": {"term": "आपके शब्दों से मिलता है: “{term}”", "model": "आपकी बात के करीब"},
+    "te": {"term": "మీ మాటలకు సరిపోతుంది: “{term}”", "model": "మీరు చెప్పినదానికి దగ్గరగా"},
+}
