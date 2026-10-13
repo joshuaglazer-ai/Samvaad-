@@ -1,0 +1,51 @@
+# Mapping from your CSV columns to SAMVAAD catalogue fields (sectors, trades, synonyms). Copy this file and change the
+# right-hand column names to match your sheet; delete lines for columns you do not have (they stay empty — nothing is
+# guessed). Example sheets: seed/examples/*.example.csv. Run, from backend/:
+#   python -m seed.import_csv --kind sectors  --file seed/examples/sectors.example.csv  --mapping seed/mapping.catalogue.example.yaml --dry-run
+#   python -m seed.import_csv --kind trades   --file seed/examples/trades.example.csv   --mapping seed/mapping.catalogue.example.yaml --status unavailable --dry-run
+#   python -m seed.import_csv --kind synonyms --file seed/examples/synonyms.example.csv --mapping seed/mapping.catalogue.example.yaml --dry-run
+# New trades default to data_status "unavailable" until a source is attached. To import verified/historical trades,
+# fill in `source` (it is created if it does not exist) and pass --status verified (or set a data_status column).
+
+source:
+  title: null                       # e.g. "NCVET qualification register extract"
+  publisher: null
+  url: null
+  reporting_period: null
+  verified_on: null                 # YYYY-MM-DD
+
+sectors:
+  columns:
+    slug: "Sector ID"               # required, lowercase-with-hyphens, never changes
+    name_en: "Sector (English)"     # required
+    name_kn: "Sector (Kannada)"
+    name_hi: "Sector (Hindi)"
+    name_te: "Sector (Telugu)"
+    icon: "Icon"                    # one of the app's icon names, e.g. bolt, car, heart, sun, gear
+    sort_order: "Order"
+
+trades:
+  columns:
+    slug: "Trade ID"                # required
+    sector: "Sector ID"             # required, must already exist
+    name_en: "Trade (English)"      # required
+    name_kn: "Trade (Kannada)"
+    name_hi: "Trade (Hindi)"
+    name_te: "Trade (Telugu)"
+    nsqf_level: "NSQF level"        # required, 1–10
+    duration_months: "Months"       # required, 1–60
+    entry_min_education: "Minimum education"   # class_8 | class_10 | class_12 | iti | diploma | graduate | other
+    entry_requirement_en: "Entry (English)"
+    entry_requirement_kn: "Entry (Kannada)"
+    entry_requirement_hi: "Entry (Hindi)"
+    entry_requirement_te: "Entry (Telugu)"
+    icon: "Icon"
+    traits: "Work styles"           # hands; people; machines; outdoors; computers (for the "Not sure yet" quiz)
+    data_status: "Data status"      # optional per row; otherwise --status
+
+synonyms:
+  columns:
+    trade: "Trade"                  # required: trade ID or its name in any language
+    language: "Language"            # required: en | kn | hi | te (romanised words take the language they belong to)
+    term: "Everyday word"           # required
+    review_status: "Review"         # needs_native_review (default) | reviewed

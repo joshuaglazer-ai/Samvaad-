@@ -56,6 +56,8 @@ class Trade(Base):
     # Work styles this trade suits, for the "Not sure yet" quiz: hands | people | machines | outdoors | computers.
     traits: Mapped[list] = mapped_column(JSON, default=list)
     data_status: Mapped[str] = mapped_column(String(20), default="demo", server_default="demo")
+    # The source behind the trade record; a trade can be marked verified/historical only once one is attached.
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"))
 
 
 class TradeSynonym(Base):

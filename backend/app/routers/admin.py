@@ -53,6 +53,22 @@ def evidence_gaps(f: a.Filters = Depends(filters), db: Session = Depends(get_db)
     return a.evidence_gaps(db, f)
 
 
+@router.get("/top-aspirations")
+def top_aspirations(f: a.Filters = Depends(filters), db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    return a.top_aspirations(db, f)
+
+
+@router.get("/unmatched-aspirations")
+def unmatched_aspirations(f: a.Filters = Depends(filters), db: Session = Depends(get_db),
+                          _: str = Depends(require_admin)):
+    return a.unmatched_aspirations(db, f)
+
+
+@router.get("/goal-vs-hope")
+def goal_vs_hope(f: a.Filters = Depends(filters), db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    return a.goal_vs_hope(db, f)
+
+
 @router.get("/data-quality")
 def data_quality(db: Session = Depends(get_db), _: str = Depends(require_admin)):
     return a.data_quality(db)

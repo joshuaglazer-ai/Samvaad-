@@ -267,6 +267,8 @@ export const api = {
   },
   admin: {
     get: <T>(pin: string, path: string) => request<T>(`/api/admin/${path}`, {}, pin),
+    send: <T>(pin: string, method: "POST" | "PUT" | "DELETE", path: string, body?: unknown) =>
+      request<T>(`/api/admin/${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body) }, pin),
     exportUrl: () => `${API_BASE}/api/admin/export.csv`,
   },
 };

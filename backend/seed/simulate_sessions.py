@@ -18,7 +18,10 @@ from sqlalchemy import delete, select
 from app import models as m
 from app.alignment import compare
 from app.chat import handle_turn
+from app.aspiration import match_fuzzy
 from app.config import ALIGNMENT_VALUES
+from app.data_tools import DataTools
+from app.goals import save_goal
 from app.db import SessionLocal
 from app.escalation import now
 from app.llm import MockLLM
@@ -39,7 +42,23 @@ DISTRICTS = {
 INCOME = {"Bengaluru Urban": [1, 3, 4, 3, 2], "Mysuru": [3, 4, 3, 1, 2], "Kalaburagi": [6, 3, 1, 0, 2], "Dharwad": [4, 4, 2, 1, 2]}
 BRACKETS = ["<1.5L", "1.5-3L", "3-6L", ">6L", "prefer_not_to_say"]
 EDU = (["class_8", "class_10", "class_12", "iti", "diploma"], [1, 6, 3, 2, 1])
-INTERESTS = ["machines", "helping", "electricity", "vehicles", "nature_solar", "computers"]
+# The learner's own goal and the parent's hope (Update 3), as families might say them (demo assumptions). Some have no
+# database trade (degree careers, nursing, jobs we hold no data on), so the unmatched-goals panel has something to show.
+GOALS = {"en": [("electrician", 6), ("bike mechanic", 5), ("solar panel work", 3), ("hospital assistant", 3),
+                ("car mechanic", 3), ("mobile repair", 3), ("computer work", 3), ("nurse", 2), ("doctor", 1),
+                ("drone pilot", 1), ("makeup artist", 1)],
+         "kn": [("ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", 6), ("ಬೈಕ್ ಮೆಕ್ಯಾನಿಕ್", 5), ("ಕರೆಂಟ್ ಕೆಲಸ", 3), ("ಆಸ್ಪತ್ರೆ ಸಹಾಯಕ", 3),
+                ("ಸೋಲಾರ್", 2), ("ಮೊಬೈಲ್ ರಿಪೇರಿ", 3), ("ನರ್ಸ್", 2), ("ಪೊಲೀಸ್", 1), ("ಡ್ರೋನ್ ಪೈಲಟ್", 1)]}
+HOPES = {"en": [("engineer", 5), ("government job", 4), ("doctor", 2), ("electrician", 4), ("nurse", 2),
+                ("hospital assistant", 2), ("teacher", 2)],
+         "kn": [("ಇಂಜಿನಿಯರ್", 5), ("ಸರ್ಕಾರಿ ಕೆಲಸ", 4), ("ಡಾಕ್ಟರ್", 2), ("ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", 4), ("ನರ್ಸ್", 2),
+                ("ಶಿಕ್ಷಕ", 2)]}
+
+
+def add_goal(db, s, who: str, text: str, lang: str) -> None:
+    """Save a goal the way the app does: the closest database trade is confirmed when there is one."""
+    r = match_fuzzy(text, lang, DataTools(db).trade_terms())
+    save_goal(db, s, who, text, lang, "text", [r["candidates"][0]["slug"]] if r["matched"] else [], True)
 
 TRADES = {  # (English mention, Kannada mention) — both recognised by the counsellor
     "electrician": ("electrician", "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್"),
@@ -135,13 +154,20 @@ def simulate(db, n: int = 200, seed: int = 7, days: int = 120) -> dict:
         s = m.SessionRow(
             participation_mode=mode, language=lang, district=district,
             income_bracket=weighted(rng, BRACKETS, INCOME[district]) if rng.random() < 0.85 else None,
-            learner_education=weighted(rng, *EDU), learner_interests=rng.sample(INTERESTS, rng.randint(1, 2)),
+            learner_education=weighted(rng, *EDU), learner_interests=[],
             top_concerns=concerns, helper_mode=rng.random() < 0.15, consent_given=True, simulated=True,
         )
         db.add(s)
         db.flush()
         db.add(m.Event(session_id=s.id, event_type="session_started", payload={"language": lang, "district": district}))
 
+        goal = weighted(rng, *zip(*GOALS[lang])) if rng.random() < 0.9 else None
+        if goal:
+            add_goal(db, s, "learner", goal, lang)
+        if mode != "learner_only" and rng.random() < 0.8:
+            # Demo assumption: about a third of parents hope for the same thing as the learner.
+            hope = goal if goal and rng.random() < 0.35 else weighted(rng, *zip(*HOPES[lang]))
+            add_goal(db, s, "parent", hope, lang)
         if mode == "two_devices":
             s.parent_joined_at = s.created_at
             s.parent_language = lang if rng.random() < 0.8 else ("en" if lang == "kn" else "kn")

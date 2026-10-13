@@ -1,6 +1,7 @@
-"""Import organiser placement/earnings data into the outcomes table.
+"""Import organiser placement/earnings data into the outcomes table — or, with --kind, sectors, trades and synonyms.
 
     python -m seed.import_csv --file data.csv --mapping mapping.yaml --status demo|verified|historical [--dry-run]
+    python -m seed.import_csv --kind trades --file trades.csv --mapping seed/mapping.catalogue.example.yaml         [--status unavailable|demo|verified|historical] [--dry-run]       (see seed/import_catalogue.py)
 
 Every row is validated. Rejected rows go to import_errors.csv with reasons. Missing values are left
 empty — the importer never guesses.
@@ -250,9 +251,11 @@ def main() -> None:
     from app.schema_setup import upgrade_to_head
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--kind", default="outcomes", choices=["outcomes", "sectors", "trades", "synonyms"])
     ap.add_argument("--file", required=True)
     ap.add_argument("--mapping", required=True)
-    ap.add_argument("--status", required=True, choices=sorted(STATUSES))
+    ap.add_argument("--status", choices=sorted(STATUSES | {"unavailable"}),
+                    help="outcomes: required (demo|verified|historical); trades: default unavailable")
     ap.add_argument("--errors", default="import_errors.csv")
     ap.add_argument("--dry-run", action="store_true", help="validate only; do not write to the database")
     args = ap.parse_args()
@@ -262,6 +265,20 @@ def main() -> None:
         rows = list(csv.DictReader(f))
 
     upgrade_to_head()
+    if args.kind != "outcomes":
+        from .import_catalogue import import_catalogue
+
+        with SessionLocal() as db:
+            rep = import_catalogue(db, args.kind, rows, mapping, args.status or "unavailable")
+            db.rollback() if args.dry_run else db.commit()
+        write_errors(rep.errors, Path(args.errors))
+        print(f"{args.kind}: rows read {len(rows)} | created {rep.created} | updated {rep.updated} | "
+              f"rejected {rep.rejected}{' | DRY RUN — nothing saved' if args.dry_run else ''}")
+        if rep.errors:
+            print(f"Rejected rows with reasons written to {args.errors}")
+        return
+    if args.status not in STATUSES:
+        raise SystemExit("--status demo|verified|historical is required for outcomes")
     with SessionLocal() as db:
         report = import_rows(db, rows, mapping, args.status, source_label=Path(args.file).name)
         if args.dry_run:

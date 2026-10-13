@@ -74,7 +74,7 @@ def seed(db: Session, rng_seed: int = 42) -> dict:
     trades: dict[str, m.Trade] = {}
     for t in TRADES:
         row = m.Trade(**{k: v for k, v in t.items() if k != "base"}, traits=TRAITS.get(t["slug"], []),
-                      data_status="demo")
+                      data_status="demo", source_id=src.id)
         db.add(row)
         trades[t["slug"]] = row
     db.flush()

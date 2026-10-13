@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import models as m
+from .aspiration import normalise
 from .config import ALIGNMENT_VALUES, CONCERN_CATEGORIES, DISTRICT_COORDS, DISTRICTS, get_settings
 
 
@@ -236,7 +237,11 @@ def evidence_gaps(db: Session, f: Filters) -> dict:
     gaps = _by_session(db, m.EvidenceGap, ids)
     groups: dict[tuple, list[m.EvidenceGap]] = defaultdict(list)
     for g in gaps:
-        groups[(g.trade_slug or "unknown", g.district or "—", g.concern_category or "other")].append(g)
+        # Goals with no database trade (Update 3) are grouped by the family's own words, so the radar shows which
+        # trades or careers to add data for.
+        trade = g.trade_slug or (f"goal: {normalise(g.query.get('aspiration_text', ''))}"
+                                 if g.tool_name == "match_aspiration" and g.query.get("aspiration_text") else "unknown")
+        groups[(trade, g.district or "—", g.concern_category or "other")].append(g)
     rows, other_req, other_groups = [], 0, 0
     for (trade, district, concern), items in sorted(groups.items(), key=lambda kv: -len(kv[1])):
         n_sess = len({g.session_id for g in items})
@@ -296,3 +301,104 @@ def export_csv(db: Session, f: Filters) -> str:
                     round(sum(q for _, q in pairs) / len(pairs), 2) if len(pairs) >= min_cell() else "",
                     "includes simulated sessions" if any(s.simulated for s in ds) else ""])
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------------------------- goals (Update 3)
+NO_MATCH = ("degree_career", "professional_course", "unknown")
+
+
+def _goal(s: m.SessionRow, who: str) -> dict | None:
+    if who == "learner":
+        text, slugs, cat = s.aspiration_text, s.matched_trade_slugs or [], s.aspiration_category
+    else:
+        text, slugs, cat = s.parent_hope_text, s.parent_hope_matched_trade_slugs or [], s.parent_hope_category
+    if not text and not slugs:
+        return None
+    return {"text": text, "slugs": slugs, "category": cat}
+
+
+def _trade_names(db: Session) -> dict[str, str]:
+    return {t.slug: (t.names or {}).get("en", t.slug) for t in db.scalars(select(m.Trade))}
+
+
+def top_aspirations(db: Session, f: Filters) -> dict:
+    """Learners' goals by district, grouped by the matched trade, in their own words. A group needs MIN_CELL
+    sessions to be shown, and an exact phrase needs MIN_CELL sessions to be quoted (free text can identify people)."""
+    names = _trade_names(db)
+    by_district: dict[str, dict[str, list[m.SessionRow]]] = defaultdict(lambda: defaultdict(list))
+    for s in sessions(db, f):
+        g = _goal(s, "learner")
+        if g:
+            by_district[s.district][g["slugs"][0] if g["slugs"] else "no_match"].append(s)
+    out = []
+    for district in [d for d in DISTRICTS if d in by_district]:
+        groups, other = [], 0
+        for key, ss in sorted(by_district[district].items(), key=lambda kv: -len(kv[1])):
+            if len(ss) < min_cell():
+                other += len(ss)
+                continue
+            phrases = Counter(normalise(x.aspiration_text) for x in ss if x.aspiration_text)
+            words = [{"text": t, "sessions": n} for t, n in phrases.most_common() if n >= min_cell()][:5]
+            groups.append({"trade_slug": None if key == "no_match" else key,
+                           "trade_name": None if key == "no_match" else names.get(key, key),
+                           "sessions": len(ss), "words": words,
+                           "other_words_sessions": len(ss) - sum(w["sessions"] for w in words)})
+        out.append({"district": district, "sessions": sum(len(v) for v in by_district[district].values()),
+                    "groups": groups, "other_sessions": other})
+    return {"districts": out, **data_flags(db, sessions(db, f))}
+
+
+def unmatched_aspirations(db: Session, f: Filters) -> dict:
+    """Goals (learner) and hopes (parent) the database has no trade for — what to add data for next."""
+    rows: dict[str, dict] = {}
+    for s in sessions(db, f):
+        for who in ("learner", "parent"):
+            g = _goal(s, who)
+            if not g or g["slugs"] or not g["text"] or g["category"] not in NO_MATCH:
+                continue
+            key = normalise(g["text"])
+            r = rows.setdefault(key, {"text": key, "category": g["category"], "session_ids": set(),
+                                      "learner": 0, "parent": 0, "districts": Counter()})
+            r["session_ids"].add(s.id)
+            r[who] += 1
+            r["districts"][s.district] += 1
+    shown, other_phrases, other_ids = [], 0, set()
+    for r in sorted(rows.values(), key=lambda r: -len(r["session_ids"])):
+        n = len(r["session_ids"])
+        if n < min_cell():
+            other_phrases += 1
+            other_ids |= r["session_ids"]  # distinct families, even if learner and parent both land here
+            continue
+        # Split counts are small cells too: anything from 1 to MIN_CELL-1 is shown as null ("fewer than 5").
+        small = lambda x: x if x == 0 or x >= min_cell() else None  # noqa: E731
+        shown.append({"text": r["text"], "category": r["category"], "sessions": n, "learner": small(r["learner"]),
+                      "parent": small(r["parent"]), "districts": {d: small(c) for d, c in r["districts"].items()}})
+    return {"goals": shown, "other": {"phrases": other_phrases, "sessions": len(other_ids)},
+            **data_flags(db, sessions(db, f))}
+
+
+def _differ(a: dict, b: dict) -> bool:
+    if a["slugs"] and b["slugs"]:
+        return set(a["slugs"]).isdisjoint(b["slugs"])
+    if a["slugs"] or b["slugs"]:
+        return True
+    return normalise(a["text"] or "") != normalise(b["text"] or "")
+
+
+def goal_vs_hope(db: Session, f: Filters) -> dict:
+    """How often the learner's goal and the parent's (self-identified) hope differ, by district."""
+    per: dict[str, list[bool]] = defaultdict(list)
+    by_mode: dict[str, list[bool]] = defaultdict(list)
+    for s in sessions(db, f):
+        a, b = _goal(s, "learner"), _goal(s, "parent")
+        if a and b:
+            d = _differ(a, b)
+            per[s.district].append(d)
+            by_mode[s.participation_mode].append(d)
+
+    def cell(xs: list[bool]) -> dict:
+        return suppress({"differ": sum(xs), "differ_rate": round(100 * sum(xs) / len(xs)) if xs else None}, len(xs))
+    rows = [{"district": d, **cell(per[d])} for d in DISTRICTS if d in per]
+    total = [x for xs in per.values() for x in xs]
+    return {"districts": rows, "overall": cell(total),
+            "by_mode": {mode: cell(xs) for mode, xs in by_mode.items()}, **data_flags(db, sessions(db, f))}

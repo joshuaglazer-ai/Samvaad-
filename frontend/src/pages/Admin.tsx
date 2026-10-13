@@ -11,6 +11,8 @@ import PinGate from "../components/ui/PinGate";
 import { useAppState } from "../lib/state";
 import { StatusBadge } from "../components/cards/EvidenceBadge";
 import ChartFrame, { DataTable } from "../components/admin/ChartFrame";
+import GoalPanels, { type GoalVsHope, type TopAspirations, type UnmatchedAspirations } from "../components/admin/GoalPanels";
+import TradesAdmin from "../components/admin/TradesAdmin";
 import { API_BASE, api, type DataStatus } from "../lib/api";
 import { ALIGN_ORDER, CONCERN_ORDER, useViz } from "../lib/viz";
 
@@ -75,6 +77,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
   const [data, setData] = useState<{
     overview: Overview; resistance: { districts: ResistanceRow[] }; concerns: Concerns; sentiment: Sentiment;
     funnel: Funnel; align: { districts: AlignRow[] }; gaps: EvidenceGaps; quality: DataQuality;
+    top: TopAspirations; unmatched: UnmatchedAspirations; goalVsHope: GoalVsHope;
   } | null>(null);
   const [tradeNames, setTradeNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -92,12 +95,14 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
   const load = useCallback(async () => {
     try {
       const g = <T,>(path: string) => api.admin.get<T>(pin, path);
-      const [overview, resistance, concerns, sentiment, funnel, align, gaps, quality] = await Promise.all([
+      const [overview, resistance, concerns, sentiment, funnel, align, gaps, quality, top, unmatched, goalVsHope] = await Promise.all([
         g<Overview>(`overview${qs}`), g<{ districts: ResistanceRow[] }>(`resistance-by-district${qs}`),
         g<Concerns>(`concerns${qs}`), g<Sentiment>(`sentiment-shift${qs}`), g<Funnel>(`funnel${qs}`),
         g<{ districts: AlignRow[] }>(`alignment-gaps${qs}`), g<EvidenceGaps>(`evidence-gaps${qs}`), g<DataQuality>("data-quality"),
+        g<TopAspirations>(`top-aspirations${qs}`), g<UnmatchedAspirations>(`unmatched-aspirations${qs}`),
+        g<GoalVsHope>(`goal-vs-hope${qs}`),
       ]);
-      setData({ overview, resistance, concerns, sentiment, funnel, align, gaps, quality });
+      setData({ overview, resistance, concerns, sentiment, funnel, align, gaps, quality, top, unmatched, goalVsHope });
       setError(null);
     } catch (e) {
       if (e instanceof Error && /401/.test(String((e as { status?: number }).status))) logout();
@@ -134,7 +139,7 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
     ...Object.fromEntries(ALIGN_ORDER.map((v) => [v, Math.round((1000 * (d.counts![v] ?? 0)) / d.completed!) / 10])),
     ...Object.fromEntries(ALIGN_ORDER.map((v) => [`${v}_n`, d.counts![v] ?? 0])),
   }));
-  const tradeName = (slug: string) => tradeNames[slug] ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const tradeName = (slug: string) => slug.startsWith("goal: ") ? `“${slug.slice(6)}” (goal)` : tradeNames[slug] ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const exportHref = `${API_BASE}/api/admin/export.csv${qs ? `${qs}&` : "?"}pin=${encodeURIComponent(pin)}`;
 
   return (
@@ -442,6 +447,11 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
         </section>
       </div>
 
+      {/* Update 3: goals in families' own words */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <GoalPanels top={data.top} unmatched={data.unmatched} goalVsHope={data.goalVsHope} animate={animate} />
+      </div>
+
       {/* Data quality */}
       <section className="glass p-4">
         <h2 className="flex items-center gap-2 text-lg font-bold text-ink-900"><Icon name="shield" className="text-primary-700" />{t("admin.dataQuality")}</h2>
@@ -467,12 +477,30 @@ function Dashboard({ pin, logout }: { pin: string; logout: () => void }) {
   );
 }
 
+function AdminTabs({ pin, logout }: { pin: string; logout: () => void }) {
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<"dashboard" | "trades">("dashboard");
+  return (
+    <>
+      <div className="mt-2 flex gap-1 rounded-2xl border border-lavender-200 bg-white p-1" role="tablist" aria-label={t("admin.title")}>
+        {(["dashboard", "trades"] as const).map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 font-semibold ${tab === k ? "bg-primary-600 text-white" : "text-ink-900"}`}>
+            <Icon name={k === "dashboard" ? "chart" : "gear"} size={20} />{k === "dashboard" ? t("admin.tabDashboard") : t("admin.tabTrades")}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel">{tab === "dashboard" ? <Dashboard pin={pin} logout={logout} /> : <TradesAdmin pin={pin} />}</div>
+    </>
+  );
+}
+
 export default function Admin() {
   const { t } = useTranslation();
   return (
     <PinGate storageKey="samvaad.adminPin" title={t("admin.title")} label={t("admin.pin")} submit={t("admin.login")}
       verify={async (pin) => { await api.admin.get(pin, "data-quality"); }}>
-      {(pin, logout) => <Dashboard pin={pin} logout={logout} />}
+      {(pin, logout) => <AdminTabs pin={pin} logout={logout} />}
     </PinGate>
   );
 }
