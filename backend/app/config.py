@@ -29,9 +29,10 @@ class Settings(BaseSettings):
     llm_mode: str = "mock"  # mock | anthropic
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5-5"
-    anthropic_fast_model: str = "claude-haiku-4-5"
-    # Server-side refusal fallback ("default" lets the API pick); empty string disables it.
-    anthropic_fallbacks: str = "default"
+    anthropic_fast_model: str = "claude-haiku-5-5"
+    # Server-side refusal fallback: "default" lets the API pick a fallback model; empty disables it.
+    # Off by default until verified with a real API call (see docs/decisions.md D46).
+    anthropic_fallbacks: str = ""
     admin_pin: str = "change-me"
     counsellor_pin: str = "change-me"
     phone_encryption_key: str = ""

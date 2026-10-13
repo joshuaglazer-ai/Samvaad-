@@ -17,6 +17,26 @@ Every outcome figure SAMVAAD shows must trace to a row in the `sources` table an
 | Skill India Digital Hub / PMKVY dashboards | Scheme-level placement figures | Not yet checked |
 | DGT — ITI placement / tracer studies | ITI trade outcomes | Not yet checked |
 
+## Seeded trades — names and codes to verify on nqr.gov.in
+
+All trade names below are **working names for the demo**. For each, find the matching qualification on the
+National Qualifications Register (nqr.gov.in), then record the official title, qualification code, NSQF level and
+awarding body. Until verified, `qualification_code` and `awarding_body` stay NULL and every outcome is `demo`.
+
+| Slug | Working name (en) | Sector | Indicative NSQF | Status |
+|---|---|---|---|---|
+| `electrician` | Electrician | Electrical | 4 | Name to verify on nqr.gov.in |
+| `wireman` | Wireman | Electrical | 3 | Name to verify on nqr.gov.in |
+| `solar-pv-installer` | Solar PV Installer | Green Energy | 4 | Name to verify on nqr.gov.in — **demo trade only until verified** |
+| `two-wheeler-service-technician` | Two-Wheeler Service Technician | Automotive | 4 | Name to verify on nqr.gov.in |
+| `automotive-service-technician` | Automotive Service Technician | Automotive | 4 | Name to verify on nqr.gov.in |
+| `ev-service-technician` | EV Service Technician | Automotive | 4 | Name to verify on nqr.gov.in |
+| `general-duty-assistant` | General Duty Assistant | Healthcare | 4 | Name to verify on nqr.gov.in |
+| `home-health-aide` | Home Health Aide | Healthcare | 4 | Name to verify on nqr.gov.in |
+
+Kannada, Hindi and Telugu trade names, job roles and ladder steps are AI-written translations of these working names
+and need native review once the official titles are confirmed.
+
 ## TODO — verification
 
 - [ ] **Verify every trade's `qualification_code` and `awarding_body` on the National Qualifications Register (nqr.gov.in).** They are deliberately `NULL` in seed data; we do not invent official codes.

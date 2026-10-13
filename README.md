@@ -2,7 +2,8 @@
 
 **Smart India Hackathon 2026 · Problem Statement SIH26241 · Ministry of Skill Development and Entrepreneurship (MSDE) · Theme: Smart Education**
 
-SAMVAAD is a career-guidance companion that a **learner and their parent use together**, in **Kannada or English**,
+SAMVAAD is a career-guidance companion that a **learner and their parent use together**, in **English, Kannada, Hindi
+or Telugu** (with voice),
 to explore vocational training with **honest, sourced local data** — and reach a human counsellor when needed.
 Scheme administrators get a dashboard showing **where and why parental resistance is concentrated**.
 
@@ -19,10 +20,10 @@ Scheme administrators get a dashboard showing **where and why parental resistanc
 
 | # | Expected outcome | What we built |
 |---|---|---|
-| 1 | Conversational tool for learners + parents, ≥1 regional language + English | Joint chat with a Learner / Parent (/ Helper) speaker toggle, full **Kannada + English**, Family Alignment Cards that feed the conversation |
+| 1 | Conversational tool for learners + parents, ≥1 regional language + English | Joint chat in **English, Kannada, Hindi and Telugu** (voice in/out per language); three ways to take part — *answer together* (side by side), *parent on their own phone* (QR + family code, own language), *learner only*; Family Alignment Cards feed the conversation; short, kind answers (reassure → one fact → next step) |
 | 2 | Verified outcome-data backend | Status-tagged records (`verified / historical / demo / unavailable`), **numbers only from database tool calls**, a **numeric guardrail** that rejects any unsupported number, district → state → national fallback reported honestly, organiser-data importer |
 | 3 | Admin dashboard: where and why resistance is concentrated | District map (size = sessions, colour = resistance share), concerns by district and income, model sentiment vs self-reported mood (separate), funnel, Alignment Gaps, **Evidence Gap Radar**, data quality, CSV export, small-cell suppression |
-| 4 | Low-literacy, low-digital-familiarity design | Voice input and read-aloud (kn-IN / en-IN), picture cards, **whole journey without typing**, 18px+ text, 48px+ targets, helper mode, **Lite mode** for low-end phones, WCAG AA contrast (tested) |
+| 4 | Low-literacy, low-digital-familiarity design | Voice input and read-aloud (en/kn/hi/te-IN), picture cards, **whole journey without typing in all four languages** (tested), 18px+ text, 48px+ targets, helper mode, **Lite mode** for low-end phones, light and pure-black dark themes, WCAG AA contrast in both (tested) |
 | 5 | Escalation to human counsellors | Automatic triggers (request, missing data ×2, 3 negative parent turns, sensitive topics, repeated guardrail failure), bilingual 3-line case summary, **live chat** (WebSocket + polling fallback) or **call-back** with explicit consent and encrypted, deletable phone numbers |
 
 ## Quick start (mock mode — no API key needed)
@@ -48,7 +49,7 @@ Set in `backend/.env`:
 LLM_MODE=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-sonnet-5-5        # counselling turns
-ANTHROPIC_FAST_MODEL=claude-haiku-4-5    # message tagging
+ANTHROPIC_FAST_MODEL=claude-haiku-5-5    # message tagging
 ```
 The frontend never calls the LLM; keys stay on the backend. If the key is missing, the app falls back to mock mode.
 
@@ -59,7 +60,7 @@ The frontend never calls the LLM; keys stay on the backend. If the key is missin
 | `DATABASE_URL` | `sqlite:///./samvaad.db` locally; PostgreSQL in deployment (`postgres://…` is normalised automatically) |
 | `LLM_MODE` | `mock` (default, deterministic, still uses real data tools) or `anthropic` |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_FAST_MODEL` | Claude settings (backend only) |
-| `ANTHROPIC_FALLBACKS` | `default` (server-side refusal fallback) or empty to disable |
+| `ANTHROPIC_FALLBACKS` | Empty (default) or `default` to enable server-side refusal fallback — not yet verified with a real API call |
 | `ADMIN_PIN`, `COUNSELLOR_PIN` | Demo-grade PINs for staff screens |
 | `PHONE_ENCRYPTION_KEY` | Fernet key for call-back numbers (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). **Required in deployment** — without it an in-memory key is used and numbers become unreadable after a restart |
 | `CORS_ORIGINS` | Comma-separated frontend origins |
@@ -68,9 +69,9 @@ The frontend never calls the LLM; keys stay on the backend. If the key is missin
 
 ## Demo walkthrough (about 5 minutes)
 
-1. **Landing** — 3D star sky. Choose **ಕನ್ನಡ**, tap **ಒಟ್ಟಿಗೆ ಪ್ರಾರಂಭಿಸಿ / Start together**. Toggle **Lite mode** in the header to show the low-end-phone experience (no WebGL).
-2. **Onboarding** — each question is read aloud. Pick **Kalaburagi**, Class 10, interests, worries (Safety, Income), optionally income, and helper mode.
-3. **Family Alignment Cards** — the learner taps five cards in order, then passes the phone to the parent. The result is gentle: "You both value … You see … differently."
+1. **Landing** — a real night sky (Yale Bright Star Catalogue, as seen from Bengaluru tonight). Choose **ಕನ್ನಡ / हिन्दी / తెలుగు / English** (tap *Hear* to listen to each name), tap **Start together**. Toggle **Dark** and **Lite** in the header (Lite = no WebGL, the same sky as a still image).
+2. **Onboarding** — each question is read aloud. Choose how you are taking part (**together**, **parent on own phone**, or **learner only**), then **Kalaburagi**, Class 10, interests, worries (Safety, Income), optionally income, and helper mode.
+3. **Family Alignment Cards** — *together*: both rows of five cards on one screen, saved together. *Two phones*: the learner's phone shows a QR + 4-digit code; open `/join` on a second phone, choose another language, and arrange the parent's cards there. The result is gentle: "You both value … You see … differently."
 4. **Mood check** — five faces each, for learner and parent.
 5. **Chat (no typing)** — tap **How much can I earn?** → an **Outcome card** with placement rate, earnings range, sample size, period, data level and the **Demo data** badge. Ask about **EV** in Kalaburagi → "District data is not available; this is the state-level figure." Tap **What are the next steps?** → the **constellation career ladder**, with the steps the learner can start now glowing gold.
 6. **Honest fallback** — ask "How much does a plumber earn?" → "I don't have verified data for this yet…" plus a counsellor offer, and an entry in the Evidence Gap Radar.
@@ -92,13 +93,13 @@ lakh → rupees), and missing values are never guessed. Imported records outrank
 ## Tests and evaluation
 
 ```bash
-cd backend && python -m pytest                 # 71 tests: data tools, guardrail, escalation, analytics, importer, mock chat
-python -m eval.run_eval                        # 30 questions (15 kn, 15 en) → eval/results.md (generated)
-cd ../frontend && npm test                     # Vitest: format, Lite-mode detection, voice detection, WCAG contrast
-npx playwright test                            # e2e: both journeys without typing, Lite mode, a11y (axe), escalation, admin
+cd backend && python -m pytest                 # 121 tests: data tools, guardrail (4 scripts), languages, family codes, escalation, analytics, importer, chat
+python -m eval.run_eval                        # 40 questions (10 each en/kn/hi/te) → eval/results.md (generated)
+cd ../frontend && npm test                     # Vitest: i18n completeness, contrast (light + dark), star maths, voice, Lite mode
+npx playwright test                            # e2e: tap-only journeys in 4 languages, two-phone family, dark mode, sky, a11y, escalation, admin
 ```
 The e2e tests expect the backend on :8000 (mock mode, seeded) and the frontend on :5173.
-Latest eval: **30/30** questions pass every check in mock mode — see [backend/eval/results.md](backend/eval/results.md).
+Latest eval: **40/40** questions pass every check in mock mode — see [backend/eval/results.md](backend/eval/results.md).
 
 ## Architecture
 
@@ -119,10 +120,12 @@ accessibility status in [docs/accessibility_checklist.md](docs/accessibility_che
 ## Known limitations
 
 - **All outcome data is demo data.** Placement and earnings figures, providers, fees and ladders are simulated until organiser or official data is imported. NSQF levels and progression routes are indicative.
-- **Kannada text is AI-written** and marked `needs_native_review` in `kn.json`; templates in the mock counsellor need the same review.
+- **Kannada, Hindi and Telugu text is AI-written** and marked `needs_native_review` (`kn.json`, `hi.json`, `te.json`, `backend/app/lang_text.py`, trade names in `seed/reference_data.py`).
+- **Parent responses are self-identified.** "Answer together" and "parent on own phone" reduce impersonation but cannot prevent it; the dashboard labels parent figures accordingly and can filter by participation mode.
+- **Server-side refusal fallback is off** (`ANTHROPIC_FALLBACKS` empty) because it has not been verified with a real API call yet.
 - **Not yet tested with real families.** The accessibility checklist includes a field-test template for the team.
 - **Staff auth is demo-grade** (a shared PIN per role, sent as a header; also as a query parameter for WebSocket and CSV export). Replace it with real identity before any live use.
-- **Kannada voice** depends on the device: many Android phones have no Kannada TTS voice (the app then shows a notice and highlights the text). `lib/voice.ts` is ready for a server-side provider such as Bhashini.
+- **Voice** depends on the device: many Android phones lack Kannada or Telugu speech voices or recognisers (the app then shows a calm notice in that language and the tap options keep working). `lib/voice.ts` is ready for a server-side provider such as Bhashini.
 - **Live-chat rooms are in-process**, so run one backend worker (or add Redis pub/sub to scale out). Polling keeps working either way.
 - **Mock mode** answers from templates and covers the pilot's trades and concerns. Open-ended questions need `LLM_MODE=anthropic`.
 - **Sentiment** in mock mode comes from keywords and is approximate. The dashboard labels it as a model estimate, separate from self-reported mood.

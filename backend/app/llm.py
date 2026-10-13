@@ -113,8 +113,9 @@ class AnthropicLLM(BaseLLM):
 
     def quick_json(self, system, text) -> str:
         resp = self.client.messages.create(
-            model=self.settings.anthropic_fast_model, max_tokens=200, system=system,
+            model=self.settings.anthropic_fast_model, max_tokens=1024, system=system,
             messages=[{"role": "user", "content": text}],
+            output_config={"effort": "low"},  # classification: minimal thinking
         )
         return "".join(b.text for b in resp.content if b.type == "text")
 
