@@ -58,12 +58,21 @@ def test_low_confidence_is_not_matched_and_never_forced(db, text):
 @pytest.mark.parametrize("lang,text,career", [
     ("en", "doctor", "doctor"), ("en", "software engineer", "engineer"), ("en", "Police officer", "police"),
     ("en", "teacher", "teacher"), ("hi", "डॉक्टर बनना है", "doctor"), ("kn", "ನಾನು ಇಂಜಿನಿಯರ್ ಆಗಬೇಕು", "engineer"),
-    ("te", "నేను నర్సు అవ్వాలి", "nurse"), ("hi", "vakil", "lawyer"),
+    ("hi", "vakil", "lawyer"),
 ])
 def test_degree_careers(db, lang, text, career):
     r = match(db, text, lang)
-    assert r["matched"] is False and r["category"] == "degree_career" and r["degree_career"] == career
+    assert r["matched"] is False and r["category"] == "degree_career" and r["career"] == career
     assert r["candidates"] == []
+
+
+@pytest.mark.parametrize("lang,text", [("en", "nurse"), ("en", "I want to do GNM"), ("te", "నేను నర్సు అవ్వాలి"),
+                                       ("hi", "नर्सिंग करनी है"), ("kn", "ನರ್ಸ್ ಆಗಬೇಕು")])
+def test_nursing_is_a_professional_course_not_a_degree_and_not_general_duty_assistant(db, lang, text):
+    r = match(db, text, lang)
+    assert r["matched"] is False and r["category"] == "professional_course" and r["career"] == "nurse"
+    assert r["candidates"] == []  # never quietly turned into General Duty Assistant
+    assert {c["slug"] for c in r["related"]} == {"general-duty-assistant", "home-health-aide"}  # offered as related
 
 
 def test_degree_career_offers_related_options_only_from_the_database(db):
@@ -132,6 +141,12 @@ def test_real_mode_cannot_return_a_trade_outside_the_candidate_list(db):
 def test_real_mode_low_scores_are_not_forced(db):
     llm = FakeLLM({"category": "vocational_match", "matches": [{"slug": "wireman", "score": 0.4}]})
     assert match(db, "something electrical maybe", llm=llm)["matched"] is False
+
+
+def test_real_mode_professional_course(db):
+    for said in ("degree_career", "professional_course"):  # the word list decides nursing's category
+        r = match(db, "nurse", llm=FakeLLM({"category": said, "matches": []}))
+        assert r["category"] == "professional_course" and r["related_sector"] == "healthcare"
 
 
 def test_real_mode_degree_career(db):

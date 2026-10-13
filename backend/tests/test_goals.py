@@ -59,12 +59,12 @@ def test_parent_hope_from_own_phone_and_change_goal(client, db):
     assert client.get(f"/api/session/{sid}/status").json()["goals"]["parent_done"] is False
     r = client.put(f"/api/session/{sid}/aspiration", json={
         "who": "parent", "text": "నర్సు", "language": "te", "source": "voice", "device_id": "phone-b"}).json()
-    assert r["parent"]["category"] == "degree_career" and r["learner"] is None and r["differ"] is False
+    assert r["parent"]["category"] == "professional_course" and r["learner"] is None and r["differ"] is False
     r = client.put(f"/api/session/{sid}/aspiration", json={
         "who": "learner", "source": "browse", "selected_slugs": ["home-health-aide"], "language": "te"}).json()
     assert r["learner"]["trades"][0]["slug"] == "home-health-aide" and r["differ"] is True
     events = [e.payload for e in db.scalars(select(m.Event).where(m.Event.event_type == "aspiration_saved"))]
-    assert {"who": "parent", "source": "voice", "category": "degree_career", "matched": 0} in events
+    assert {"who": "parent", "source": "voice", "category": "professional_course", "matched": 0} in events
 
 
 def test_none_of_these_is_respected_and_logged(client, db):

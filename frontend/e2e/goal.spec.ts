@@ -60,6 +60,15 @@ test("say it: a degree career is respected; related skill options come from the 
   for (const tr of healthcare) await expect(page.getByRole("radio", { name: tr.name, exact: true })).toBeVisible();
 });
 
+test("say it: nursing is a professional course (not a degree, not General Duty Assistant)", async ({ page }) => {
+  await toGoalStep(page);
+  await say(page, "nurse");
+  await expect(page.getByText(en.goal.professionalMsg)).toBeVisible();
+  await expect(page.getByText(en.goal.degreeMsg)).toHaveCount(0);
+  await expect(page.getByText(en.goal.closest)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: en.goal.showRelated })).toBeVisible();
+});
+
 test("browse: search works in any language and leads to the confirm step", async ({ page }) => {
   await toGoalStep(page);
   await page.getByRole("radio", { name: new RegExp(esc(en.goal.browse)) }).click();

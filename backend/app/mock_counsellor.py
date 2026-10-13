@@ -286,9 +286,10 @@ def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
         if res.get("matched"):
             names = ", ".join(c["name"] for c in res["candidates"])
             return g["found"].format(names=names)
-        if res.get("category") == "degree_career":
-            extra = g["related"].format(sector=res["related_sector_name"])                 if res.get("related") and res.get("related_sector_name") else ""
-            return g["degree"] + extra
+        if res.get("category") in ("degree_career", "professional_course"):
+            has_related = res.get("related") and res.get("related_sector_name")
+            extra = g["related"].format(sector=res["related_sector_name"]) if has_related else ""
+            return g["professional" if res["category"] == "professional_course" else "degree"] + extra
         return g["unknown"]
     if not res.get("found"):
         if name == "get_providers" and res.get("trade_name"):

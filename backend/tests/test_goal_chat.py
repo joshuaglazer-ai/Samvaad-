@@ -52,6 +52,16 @@ def test_degree_goal_mentions_related_sector_from_the_database(client):
     assert ask(client, sid, "What can I do?")["reply_text"] == lt.GOAL_NOMATCH["en"]["degree"]
 
 
+@pytest.mark.parametrize("lang,text", [("en", "nurse"), ("hi", "नर्स")])
+def test_nursing_goal_reply_is_not_called_a_degree_and_keeps_related_offer(client, lang, text):
+    sid = client.post("/api/session", json=BASE | {"language": lang,
+                                                   "aspiration": {"text": text, "language": lang, "source": "text"}}).json()["session_id"]
+    r = ask(client, sid, QUICK[lang]["outcome"], lang)
+    assert r["reply_text"].startswith(lt.GOAL_NOMATCH[lang]["professional"])
+    assert lt.GOAL_NOMATCH[lang]["related"].split("{sector}")[0].strip() in r["reply_text"]
+    assert "degree" not in r["reply_text"].lower() and not re.search(r"[0-9०-९₹]", r["reply_text"])
+
+
 def test_family_can_still_ask_for_other_options(client):
     sid = start(client, aspiration={"text": "drone pilot", "source": "text"})
     r = ask(client, sid, "Show other options")

@@ -90,7 +90,7 @@ export interface SessionStatus {
 }
 
 export type GoalSource = "voice" | "text" | "browse" | "quiz";
-export type GoalCategory = "vocational_match" | "degree_career" | "unknown";
+export type GoalCategory = "vocational_match" | "degree_career" | "professional_course" | "unknown";
 
 /** A goal as sent to the backend: the family's own words and/or trades they picked (database slugs only). */
 export interface GoalDraft {
@@ -112,7 +112,7 @@ export interface MatchResult {
   candidates: MatchCandidate[];
   related: MatchCandidate[];
   related_sector?: string | null;
-  degree_career?: string;
+  career?: string;
   confidence: number;
 }
 

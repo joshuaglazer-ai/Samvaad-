@@ -173,7 +173,7 @@ class SessionRow(Base):
     aspiration_source: Mapped[str | None] = mapped_column(String(10))  # voice | text | browse | quiz
     matched_trade_slugs: Mapped[list] = mapped_column(JSON, default=list)
     match_confidence: Mapped[float | None] = mapped_column(Float)
-    aspiration_category: Mapped[str | None] = mapped_column(String(20))  # vocational_match | degree_career | unknown
+    aspiration_category: Mapped[str | None] = mapped_column(String(20))  # vocational_match | degree_career | professional_course | unknown
     aspiration_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     parent_hope_text: Mapped[str | None] = mapped_column(Text)
     parent_hope_language: Mapped[str | None] = mapped_column(String(5))

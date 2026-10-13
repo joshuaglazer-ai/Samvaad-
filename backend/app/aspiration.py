@@ -25,7 +25,8 @@ log = logging.getLogger(__name__)
 MATCH_THRESHOLD = 0.80   # at or above: a confident match
 RELATED_MIN = 0.7        # weaker matches are offered only as "related options", never as the goal
 MAX_CANDIDATES = 3
-CATEGORIES = ("vocational_match", "degree_career", "unknown")
+CATEGORIES = ("vocational_match", "degree_career", "professional_course", "unknown")
+NO_TRADE_CATEGORIES = ("degree_career", "professional_course")  # respected goals that are not vocational trades
 
 
 @dataclass
@@ -96,19 +97,18 @@ def term_score(text_key: str, term: str) -> float:
 
 
 # ---------------------------------------------------------------- degree careers
-def detect_degree_career(text: str) -> tuple[str, str | None] | None:
-    """(career key, related sector slug) if the text names a degree career, else None."""
+def detect_degree_career(text: str) -> tuple[str, str | None, str] | None:
+    """(career key, related sector slug, category) if the text names a degree career or professional course."""
     norm = normalise(text)
     key = phonetic(norm)
     for career, spec in _lt.DEGREE_CAREERS.items():
         for terms in spec["terms"].values():
             for term in terms:
                 t = normalise(term)
-                if _is_indic(t):
-                    if t in norm:
-                        return career, spec["related_sector"]
-                elif re.search(rf"(?<!\S){re.escape(phonetic(t))}", key):  # word start: engineer → engineering
-                    return career, spec["related_sector"]
+                # Indian scripts: anywhere in the text. Latin: at a word start, so engineer → engineering.
+                hit = t in norm if _is_indic(t) else re.search(rf"(?<!\S){re.escape(phonetic(t))}", key)
+                if hit:
+                    return career, spec["related_sector"], spec.get("category", "degree_career")
     return None
 
 
@@ -152,10 +152,10 @@ def match_fuzzy(text: str, language: str, trades: list[TradeTerms]) -> dict:
     scored = fuzzy_scores(text, trades)
     degree = detect_degree_career(text)
     if degree:
-        career, related_sector = degree
+        career, related_sector, category = degree
         related = [_candidate(t, 0, lang, None) | {"reason": ""} for _, t, _ in sorted(scored, key=lambda x: x[1].slug)
                    if related_sector and t.sector == related_sector][:MAX_CANDIDATES]
-        return base | {"matched": False, "category": "degree_career", "degree_career": career,
+        return base | {"matched": False, "category": category, "career": career,
                        "related_sector": related_sector, "confidence": 0.0, "candidates": [], "related": related}
     strong = [(s, t, term) for s, t, term in scored if s >= MATCH_THRESHOLD][:MAX_CANDIDATES]
     if strong:
@@ -170,8 +170,9 @@ def match_fuzzy(text: str, language: str, trades: list[TradeTerms]) -> dict:
 CLASSIFY_SYSTEM = (
     "You sort a learner's career goal for an Indian vocational-guidance app. The goal may be in English, Kannada, "
     "Hindi or Telugu, or romanised. Decide its category: vocational_match (it is one of the listed trades or an "
-    "everyday name for one), degree_career (a career that normally needs a degree or professional course, e.g. "
-    "doctor, engineer, teacher, police officer, lawyer), or unknown (anything else, including jobs not in the list). "
+    "everyday name for one), degree_career (a career that normally needs a degree, e.g. doctor, engineer, teacher, "
+    "police officer, lawyer), professional_course (a profession with its own diploma or degree courses, e.g. nursing), "
+    "or unknown (anything else, including jobs not in the list). "
     "Only pick slugs from the list, at most 3, each with a score from 0 to 1 for how surely it is the same job. "
     "Never pick a trade just because it is in the same field; if unsure, use unknown with no matches."
 )
@@ -224,10 +225,11 @@ def match_with_model(text: str, language: str, trades: list[TradeTerms], llm) ->
         log.warning("model returned trades outside the candidate list (rejected): %s", rejected)
     base = {"text": text, "language": lang, "normalised": normalise(text), "mode": "model",
             "rejected_slugs": rejected}
-    if category == "degree_career":
+    if category in NO_TRADE_CATEGORIES:
         fuzzy = match_fuzzy(text, lang, trades)
-        return fuzzy | base | {"matched": False, "category": "degree_career", "candidates": [], "confidence": 0.0,
-                               "degree_career": fuzzy.get("degree_career"), "related_sector": fuzzy.get("related_sector"),
+        known = fuzzy["category"] if fuzzy["category"] in NO_TRADE_CATEGORIES else category
+        return fuzzy | base | {"matched": False, "category": known, "candidates": [], "confidence": 0.0,
+                               "career": fuzzy.get("career"), "related_sector": fuzzy.get("related_sector"),
                                "related": fuzzy.get("related", [])}
     picks.sort(key=lambda p: -p[0])
     picks = picks[:MAX_CANDIDATES]

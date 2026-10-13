@@ -247,7 +247,9 @@ export default function GoalPicker({ who, district, onDone, onSkip, skipLabel }:
         </div>
       )}
 
-      {view === "confirm" && pending && (
+      {view === "confirm" && pending && (() => {
+        const noTradeGoal = pending.match?.category === "degree_career" || pending.match?.category === "professional_course";
+        return (
         <div className="space-y-4" aria-live="polite">
           <p className="text-lg text-ink-900">
             {who === "parent" ? t("goal.understoodParent") : t("goal.understoodLearner")}{" "}
@@ -273,14 +275,15 @@ export default function GoalPicker({ who, district, onDone, onSkip, skipLabel }:
             <>
               <p className="flex items-start gap-2 rounded-xl bg-lavender-100 px-3 py-2 text-lg text-ink-900">
                 <Icon name="heart" className="mt-1 shrink-0 text-primary-700" />
-                {pending.match?.category === "degree_career" ? t("goal.degreeMsg") : t("goal.unknownMsg")}
+                {pending.match?.category === "degree_career" ? t("goal.degreeMsg")
+                  : pending.match?.category === "professional_course" ? t("goal.professionalMsg") : t("goal.unknownMsg")}
               </p>
-              {pending.match?.category === "degree_career" && (pending.match.related?.length ?? 0) > 0 && (
+              {noTradeGoal && (pending.match?.related?.length ?? 0) > 0 && (
                 <p className="text-ink-600">{t("goal.degreeRelated")}</p>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button icon="check" onClick={() => finish([])}>{t("goal.saveGoal")}</Button>
-                {pending.match?.category === "degree_career" && (pending.match.related?.length ?? 0) > 0 ? (
+                {noTradeGoal && (pending.match?.related?.length ?? 0) > 0 ? (
                   <Button variant="secondary" icon="sparkle" onClick={() => {
                     const rel = sectors.find((s) => s.slug === pending.match?.related_sector);
                     setQuery("");
@@ -296,7 +299,8 @@ export default function GoalPicker({ who, district, onDone, onSkip, skipLabel }:
           )}
           {back()}
         </div>
-      )}
+        );
+      })()}
 
       {error && <p role="alert" className="rounded-xl bg-danger-600/10 px-3 py-2 text-danger-600">{error}</p>}
     </div>

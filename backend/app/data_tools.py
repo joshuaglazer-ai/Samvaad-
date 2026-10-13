@@ -446,7 +446,7 @@ TOOL_SCHEMAS: list[dict] = [
         "name": "match_aspiration",
         "description": "Match what the learner says they want to do or become (their own words, any language) to "
                        "trades in the database. Returns up to 3 candidates with matched true/false and a category "
-                       "(vocational_match | degree_career | unknown). Never suggest a trade that is not returned.",
+                       "(vocational_match | degree_career | professional_course | unknown). Never suggest a trade that is not returned.",
         "input_schema": {"type": "object", "properties": {
             "text": {"type": "string"},
             "language": {"type": "string", "enum": ["en", "kn", "hi", "te"]},

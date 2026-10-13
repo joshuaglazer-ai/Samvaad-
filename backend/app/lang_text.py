@@ -234,7 +234,8 @@ SUMMARY = {
 
 # ---------------------------------------------------------------- Update 3: matching the learner's own goal
 # Careers that usually need a degree or professional course. Matching them never forces a vocational trade; the goal
-# is respected and a counsellor is offered. `related_sector` (a sectors.slug, optional) is only used to offer related
+# is respected and a counsellor is offered. `category` defaults to degree_career; nursing is a professional_course
+# (diploma routes such as ANM and GNM as well as B.Sc Nursing), so it is not called a degree in replies. `related_sector` (a sectors.slug, optional) is only used to offer related
 # skill options if the family wants them. Romanised forms are what people type on phones. Needs native review.
 DEGREE_CAREERS = {
     "doctor": {"related_sector": "healthcare", "terms": {
@@ -242,8 +243,8 @@ DEGREE_CAREERS = {
         "kn": ["ಡಾಕ್ಟರ್", "ವೈದ್ಯ", "daktru", "vaidya"],
         "hi": ["डॉक्टर", "डाक्टर", "चिकित्सक", "daktar", "doktar"],
         "te": ["డాక్టర్", "వైద్యుడు", "వైద్యురాలు", "daktaru"]}},
-    "nurse": {"related_sector": "healthcare", "terms": {
-        "en": ["nurse", "nursing", "staff nurse", "bsc nursing", "gnm"],
+    "nurse": {"related_sector": "healthcare", "category": "professional_course", "terms": {
+        "en": ["nurse", "nursing", "staff nurse", "bsc nursing", "gnm", "anm"],
         "kn": ["ನರ್ಸ್", "ದಾದಿ", "nursu"],
         "hi": ["नर्स", "नर्सिंग"],
         "te": ["నర్సు", "నర్స్", "నర్సింగ్"]}},
@@ -301,19 +302,22 @@ QUIZ_REASON = {
 # trade; the goal is respected and a counsellor is offered. `related` is added only when the database has related
 # skill options in a sector. Needs native review.
 GOAL_NOMATCH = {
-    "en": {"degree": "That's a wonderful goal. I don't have verified data on this path here. A counsellor can guide you well.",
+    "en": {"professional": "That's a wonderful goal. Nursing is a professional course with its own path. A counsellor can guide you well.","degree": "That's a wonderful goal. I don't have verified data on this path here. A counsellor can guide you well.",
            "related": " If you like, I can also show skill-based options in {sector} that some learners start with.",
            "unknown": "Thank you for sharing. I don't have reliable information on this yet. Would you like to talk to a counsellor, or look at related options?",
            "found": "For your goal, the closest options we have information on are {names}. Which one would you like to look at?"},
-    "kn": {"degree": "ಇದು ಒಳ್ಳೆಯ ಗುರಿ. ಈ ದಾರಿಯ ಬಗ್ಗೆ ಇಲ್ಲಿ ಪರಿಶೀಲಿಸಿದ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರು ಚೆನ್ನಾಗಿ ಮಾರ್ಗದರ್ಶನ ಮಾಡಬಹುದು.",
+    "kn": {"professional": "ಇದು ಒಳ್ಳೆಯ ಗುರಿ. ನರ್ಸಿಂಗ್ ತನ್ನದೇ ದಾರಿ ಇರುವ ವೃತ್ತಿಪರ ಕೋರ್ಸ್. ಸಲಹೆಗಾರರು ಚೆನ್ನಾಗಿ ಮಾರ್ಗದರ್ಶನ ಮಾಡಬಹುದು.",
+           "degree": "ಇದು ಒಳ್ಳೆಯ ಗುರಿ. ಈ ದಾರಿಯ ಬಗ್ಗೆ ಇಲ್ಲಿ ಪರಿಶೀಲಿಸಿದ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರು ಚೆನ್ನಾಗಿ ಮಾರ್ಗದರ್ಶನ ಮಾಡಬಹುದು.",
            "related": " ನೀವು ಬಯಸಿದರೆ, ಕೆಲವು ವಿದ್ಯಾರ್ಥಿಗಳು ಶುರು ಮಾಡುವ {sector} ಕ್ಷೇತ್ರದ ಕೌಶಲ್ಯ ಆಯ್ಕೆಗಳನ್ನೂ ತೋರಿಸಬಲ್ಲೆ.",
            "unknown": "ಹಂಚಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಇದರ ಬಗ್ಗೆ ಇನ್ನೂ ನಂಬಲರ್ಹ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರೊಂದಿಗೆ ಮಾತನಾಡಲು ಅಥವಾ ಸಂಬಂಧಿತ ಆಯ್ಕೆಗಳನ್ನು ನೋಡಲು ಬಯಸುತ್ತೀರಾ?",
            "found": "ನಿಮ್ಮ ಗುರಿಗೆ ನಮ್ಮಲ್ಲಿ ಮಾಹಿತಿ ಇರುವ ಹತ್ತಿರದ ಆಯ್ಕೆಗಳು: {names}. ಯಾವುದನ್ನು ನೋಡೋಣ?"},
-    "hi": {"degree": "यह बहुत अच्छा लक्ष्य है। इस रास्ते के बारे में यहाँ मेरे पास जाँची हुई जानकारी नहीं है। काउंसलर आपको अच्छे से रास्ता दिखा सकते हैं।",
+    "hi": {"professional": "यह बहुत अच्छा लक्ष्य है। नर्सिंग एक प्रोफेशनल कोर्स है, जिसका अपना रास्ता है। काउंसलर आपको अच्छे से रास्ता दिखा सकते हैं।",
+           "degree": "यह बहुत अच्छा लक्ष्य है। इस रास्ते के बारे में यहाँ मेरे पास जाँची हुई जानकारी नहीं है। काउंसलर आपको अच्छे से रास्ता दिखा सकते हैं।",
            "related": " आप चाहें तो {sector} में कुछ हुनर वाले विकल्प भी दिखा सकते हैं, जिनसे कुछ छात्र शुरुआत करते हैं।",
            "unknown": "बताने के लिए धन्यवाद। इसके बारे में अभी मेरे पास भरोसेमंद जानकारी नहीं है। क्या आप काउंसलर से बात करना चाहेंगे, या मिलते-जुलते विकल्प देखना चाहेंगे?",
            "found": "आपके लक्ष्य के सबसे करीबी विकल्प, जिनकी जानकारी हमारे पास है: {names}। आप कौन-सा देखना चाहेंगे?"},
-    "te": {"degree": "ఇది చాలా మంచి లక్ష్యం. ఈ దారి గురించి ఇక్కడ నా దగ్గర ధృవీకరించిన సమాచారం లేదు. కౌన్సిలర్ మీకు బాగా దారి చూపగలరు.",
+    "te": {"professional": "ఇది చాలా మంచి లక్ష్యం. నర్సింగ్ తనదైన దారి ఉన్న ప్రొఫెషనల్ కోర్సు. కౌన్సిలర్ మీకు బాగా దారి చూపగలరు.",
+           "degree": "ఇది చాలా మంచి లక్ష్యం. ఈ దారి గురించి ఇక్కడ నా దగ్గర ధృవీకరించిన సమాచారం లేదు. కౌన్సిలర్ మీకు బాగా దారి చూపగలరు.",
            "related": " మీకు కావాలంటే, కొంతమంది విద్యార్థులు మొదలుపెట్టే {sector} నైపుణ్య ఆప్షన్లు కూడా చూపిస్తాను.",
            "unknown": "చెప్పినందుకు ధన్యవాదాలు. దీని గురించి ఇంకా నా దగ్గర నమ్మదగిన సమాచారం లేదు. కౌన్సిలర్‌తో మాట్లాడాలనుకుంటున్నారా, లేదా సంబంధిత ఆప్షన్లు చూడాలనుకుంటున్నారా?",
            "found": "మీ లక్ష్యానికి మా దగ్గర సమాచారం ఉన్న దగ్గరి ఆప్షన్లు: {names}. ఏది చూద్దాం?"},
