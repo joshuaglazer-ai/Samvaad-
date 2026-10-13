@@ -48,6 +48,8 @@ function Ranker({ who, onSave }: { who: Who; onSave: (ranking: string[]) => Prom
         {who === "learner" ? t("alignment.learnerTurn") : t("alignment.parentTurn")}
       </h2>
       <p className="mt-1 text-ink-600">{desktop ? t("alignment.dragHint") : t("alignment.tapHint")}</p>
+      {/* Cards are locked while saving so quick taps cannot land on a card set that is about to be replaced. */}
+      <fieldset disabled={saving} className="contents">
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label={t("alignment.title")}>
         {VALUES.map(([v, icon]) => {
           const rank = order.indexOf(v);
@@ -66,6 +68,7 @@ function Ranker({ who, onSave }: { who: Who; onSave: (ranking: string[]) => Prom
           );
         })}
       </div>
+      </fieldset>
       {order.length > 0 && (
         <ol className="mt-4 flex flex-wrap gap-2" aria-label={t("alignment.title")}>
           {order.map((v, i) => (

@@ -44,7 +44,9 @@ async function journey(page: Page, lang: "en" | "kn") {
   await page.getByRole("button", { name: L.finish }).click();
 
   // alignment: learner then parent, tap-to-order
-  for (const order of [L.values, [...L.values].reverse()]) {
+  const turns = lang === "en" ? ["Learner's turn", "Parent's turn"] : ["ಕಲಿಯುವವರ ಸರದಿ", "ಪೋಷಕರ ಸರದಿ"];
+  for (const [i, order] of [L.values, [...L.values].reverse()].entries()) {
+    await expect(page.getByRole("heading", { name: turns[i] })).toBeVisible();
     for (const v of order) await page.getByRole("checkbox", { name: v }).click();
     await page.getByRole("button", { name: L.save }).click();
   }

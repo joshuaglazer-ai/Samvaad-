@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import StarField, { Nebula, ShootingStar } from "./StarField";
-import FloatingOrb from "./FloatingOrb";
-import ConstellationLadder from "./ConstellationLadder";
+import StarField, { Meteor } from "./StarField";
+import { useAppState } from "../../lib/state";
 
 interface Props {
   variant?: "landing" | "onboarding";
 }
 
-/** Lazy-loaded WebGL background. Never rendered in Lite mode. DPR capped at 1.5; paused when the tab is hidden. */
+/** Lazy-loaded WebGL sky. Never rendered in Lite mode (the pre-rendered catalogue image is shown instead).
+ * DPR capped at 1.5; the render loop pauses when the tab is hidden. */
 export default function SkyScene({ variant = "landing" }: Props) {
+  const { theme } = useAppState();
   const [visible, setVisible] = useState(!document.hidden);
+
   useEffect(() => {
     const onVis = () => setVisible(!document.hidden);
     document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
+    // While the live sky is on screen, hide the static star image underneath so stars are not doubled.
+    document.documentElement.classList.add("webgl-sky");
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      document.documentElement.classList.remove("webgl-sky");
+    };
   }, []);
 
   return (
@@ -22,20 +29,12 @@ export default function SkyScene({ variant = "landing" }: Props) {
       <Canvas
         dpr={[1, 1.5]}
         frameloop={visible ? "always" : "never"}
-        camera={{ position: [0, 0, 6], fov: 55 }}
+        camera={{ position: [0, 0, 0], fov: 70, near: 0.1, far: 500 }}
         gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
       >
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[3, 4, 5]} intensity={1.2} color="#ffffff" />
-        <Nebula />
-        <StarField count={variant === "landing" ? 2600 : 1400} />
-        {variant === "landing" && (
-          <>
-            <ShootingStar />
-            <FloatingOrb />
-            <ConstellationLadder />
-          </>
-        )}
+        <StarField theme={theme} />
+        {/* At most one very rare, subtle meteor, on the Landing page at night only. */}
+        {variant === "landing" && theme === "dark" && <Meteor />}
       </Canvas>
     </div>
   );

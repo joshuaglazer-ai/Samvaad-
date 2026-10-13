@@ -128,5 +128,14 @@ accessibility status in [docs/accessibility_checklist.md](docs/accessibility_che
 - **Sentiment** in mock mode comes from keywords and is approximate. The dashboard labels it as a model estimate, separate from self-reported mood.
 - Lighthouse mobile scores have not yet been measured on a deployed build (target ≥ 80 in Lite mode).
 
+## Credits
+
+- **Star data:** Yale Bright Star Catalogue, 5th revised edition — D. Hoffleit & W. H. Warren Jr. (1991), public domain,
+  obtained from CDS Strasbourg (catalogue V/50). Processed at build time by `frontend/scripts/build-stars.mts`
+  (`npm run build:stars`) into 4,103 stars (V ≤ 5.8). The faint Milky Way band is a procedural texture laid along the
+  real galactic plane.
+- **Map tiles:** © OpenStreetMap contributors.
+- **Fonts:** Plus Jakarta Sans, Noto Sans Kannada (Google Fonts, SIL Open Font License).
+
 ---
 *SAMVAAD offers guidance, not guarantees. The final decision is always yours.*

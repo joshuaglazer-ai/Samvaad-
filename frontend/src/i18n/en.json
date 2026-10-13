@@ -21,7 +21,8 @@
     "dark": "Dark",
     "light": "Light",
     "toDark": "Switch to dark mode",
-    "toLight": "Switch to light mode"
+    "toLight": "Switch to light mode",
+    "starCredit": "Star positions: Yale Bright Star Catalogue (public domain)."
   },
   "landing": {
     "start": "Start together",

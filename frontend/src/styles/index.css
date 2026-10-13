@@ -31,8 +31,6 @@
   --glass-border: var(--color-lavender-200);
   --glass-shadow: var(--shadow-soft);
   --focus: var(--color-primary-700);
-  --star-dot: rgb(146 119 219 / .5);
-  --star-gold: rgb(242 207 107 / .8);
   --face-1: #EFE9FD; --face-3: #F8F5FF; --face-4: #FDF6DF; --face-5: #FBEFC5;
   --face-line: #56399F; --face-ink: #241B4B;
   color-scheme: light;
@@ -65,8 +63,6 @@ html[data-theme="dark"] {
   --glass-shadow: none;
   --shadow-soft: none;
   --focus: #FFFFFF;
-  --star-dot: rgb(255 255 255 / .55);
-  --star-gold: rgb(255 255 255 / .85);
   --face-1: #262626; --face-3: #1C1C1C; --face-4: #2E2A1F; --face-5: #3A3220;
   --face-line: #A3A3A3; --face-ink: #F5F5F5;
 }
@@ -83,21 +79,15 @@ body {
 }
 html[lang="kn"] body { font-family: var(--font-kannada); line-height: 1.65; }
 
-/* Static CSS star layer — always present; it is the fallback when WebGL is off (Lite mode). */
+/* Static star layer: a pre-rendered image of the same Yale Bright Star Catalogue sky (scripts/build-stars.mts).
+   Always present; it is the background when WebGL is off (Lite mode) and on screens without the live sky. */
 .static-stars {
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image:
-    radial-gradient(1.5px 1.5px at 12% 18%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(1px 1px at 28% 72%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(2px 2px at 44% 32%, var(--star-gold) 50%, transparent 51%),
-    radial-gradient(1px 1px at 61% 12%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 73% 58%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(2px 2px at 86% 26%, var(--star-gold) 50%, transparent 51%),
-    radial-gradient(1px 1px at 92% 82%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 8% 88%, var(--star-dot) 50%, transparent 51%),
-    radial-gradient(1px 1px at 52% 90%, var(--star-dot) 50%, transparent 51%);
-  background-size: 420px 420px;
+  background: url("/sky/stars-light.png") center / cover no-repeat;
+  opacity: .9;
 }
+html[data-theme="dark"] .static-stars { background-image: url("/sky/stars-dark.png"); opacity: 1; }
+html.webgl-sky .static-stars { display: none; }
 
 /* Frosted glass card */
 .glass {
