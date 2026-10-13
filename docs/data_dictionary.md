@@ -28,6 +28,25 @@ All monetary values are Indian Rupees (INR). Earnings are stored per `earnings_b
 | entry_min_education | enum | Structured minimum (`class_8`…`graduate`) used for eligibility |
 | job_roles | JSON `{lang: [role, …]}` | Typical first jobs |
 | icon | text | Icon name used by the UI |
+| traits | JSON list | Work styles for the "Not sure yet" quiz: `hands`, `people`, `machines`, `outdoors`, `computers` |
+| data_status | text | `verified` / `historical` / `demo` / `unavailable` for the trade record itself; new trades start `unavailable` (or `demo`) |
+| source_id | FK sources, NULL | Source behind the trade record; required before `verified` / `historical` |
+
+### sectors
+| Field | Type | Meaning |
+|---|---|---|
+| slug | text, unique | Stable ID, e.g. `green-energy` (cannot change once created) |
+| names | JSON `{en, kn, hi, te}` | Display names (missing language → English, logged) |
+| icon | text | Icon name for the sector picture card |
+| sort_order | int | Order on the Browse screen |
+
+### trade_synonyms
+| Field | Type | Meaning |
+|---|---|---|
+| trade_id | FK trades | The trade this everyday word points to |
+| language | `en`/`kn`/`hi`/`te` | Language the word belongs to (romanised forms such as "bijli mistri" are tagged with their language, here `hi`) |
+| term | text | The word or phrase families use, e.g. "current work", "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", "బైక్ మెకానిక్" |
+| review_status | text | `needs_native_review` until a native speaker checks it, then `reviewed` |
 
 ### providers
 | Field | Meaning |
@@ -66,6 +85,11 @@ Random UUID `id`; **no names**. `language`, `district`, `income_bracket` (option
 `helper_mode`, `consent_given`, `created_at`, `ended_at`, `escalated`, `simulated` (true for generated dashboard data),
 `participation_mode` (`together` | `two_devices` | `learner_only`), `family_code` (4 digits, expires after 2 hours),
 `family_code_expires_at`, `parent_joined_at`, `parent_language`.
+Learner goal (Update 3): `aspiration_text` (saved exactly as said, even when unmatched), `aspiration_language`,
+`aspiration_source` (`voice` | `text` | `browse` | `quiz`), `matched_trade_slugs` (JSON, up to 3, database trades only),
+`match_confidence` (0–1), `aspiration_category` (`vocational_match` | `degree_career` | `professional_course` |
+`unknown`), `aspiration_confirmed`. The parent's hope for the child uses the same fields prefixed `parent_hope_`.
+`learner_interests` is no longer collected (kept for older sessions).
 **All parent data is self-identified**; `two_devices` sessions (parent joined on their own phone) are the strongest signal.
 
 ### messages
@@ -79,6 +103,7 @@ no personal data), live (counsellor-room message), created_at`.
 `earning_soon, near_home, respect, study_further, safety`).
 
 ### evidence_gaps
+Unmatched goals are logged with `tool_name = match_aspiration`, `trade_slug = NULL` and `query = {aspiration_text, language, category}` (`category` may be `rejected_matches` when the family chose "None of these").
 One row per data-tool call that returned `found=False`: `trade_slug, district, concern_category, tool_name, query`.
 
 ### escalations

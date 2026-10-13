@@ -95,3 +95,36 @@ questions:
      expect: {concern: distance_migration, tools: [get_providers], data_found: false, escalate: false, note: "no EV centre in Kalaburagi (provider gap)"}}
   - {id: te10, lang: te, district: Mysuru, education: class_10, text: "మా అమ్మాయి రాత్రి ఒంటరిగా పనికి వెళ్లడం సురక్షితమేనా?",
      expect: {concern: safety, tools: [], data_found: null, escalate: true}}
+
+# 12 aspiration questions (Update 3): 3 per language. The learner first says a goal in their own words (`goal`); the
+# app matches it to database trades only and confirms the closest one, as the onboarding screen does. Then the family
+# asks a question in chat (`text`).
+# expect.category: vocational_match | degree_career | professional_course | unknown
+# expect.trade: the matched trade slug, or null when nothing in the database should match (never forced)
+# Includes 2 degree careers (doctor, engineer), 2 unknown goals (drone pilot, makeup artist) and nursing
+# (a professional course, not a degree).
+aspirations:
+  - {id: asp-en1, lang: en, district: Mysuru, goal: "bike mechanic", text: "How much can I earn?",
+     expect: {category: vocational_match, trade: two-wheeler-service-technician}}
+  - {id: asp-en2, lang: en, district: Dharwad, goal: "I want to become a doctor", text: "How much can I earn?",
+     expect: {category: degree_career, trade: null}}
+  - {id: asp-en3, lang: en, district: Bengaluru Urban, goal: "drone pilot", text: "How much can I earn?",
+     expect: {category: unknown, trade: null}}
+  - {id: asp-kn1, lang: kn, district: Kalaburagi, goal: "ಕರೆಂಟ್ ಕೆಲಸ", text: "ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?",
+     expect: {category: vocational_match, trade: electrician}}
+  - {id: asp-kn2, lang: kn, district: Mysuru, goal: "ಸೋಲಾರ್ ಪ್ಯಾನೆಲ್ ಕೆಲಸ", text: "ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?",
+     expect: {category: vocational_match, trade: solar-pv-installer}}
+  - {id: asp-kn3, lang: kn, district: Dharwad, goal: "ನರ್ಸ್ ಆಗಬೇಕು", text: "ಎಷ್ಟು ಸಂಪಾದಿಸಬಹುದು?",
+     expect: {category: professional_course, trade: null}}
+  - {id: asp-hi1, lang: hi, district: Bengaluru Urban, goal: "bijli mistri", text: "कितना कमा सकते हैं?",
+     expect: {category: vocational_match, trade: electrician}}
+  - {id: asp-hi2, lang: hi, district: Mysuru, goal: "गैराज का काम", text: "कितना कमा सकते हैं?",
+     expect: {category: vocational_match, trade: automotive-service-technician}}
+  - {id: asp-hi3, lang: hi, district: Kalaburagi, goal: "इंजीनियर बनना है", text: "कितना कमा सकते हैं?",
+     expect: {category: degree_career, trade: null}}
+  - {id: asp-te1, lang: te, district: Dharwad, goal: "ఇంటి సంరక్షణ పని", text: "ఎంత సంపాదించవచ్చు?",
+     expect: {category: vocational_match, trade: home-health-aide}}
+  - {id: asp-te2, lang: te, district: Mysuru, goal: "ఆసుపత్రి సహాయకుడు", text: "ఎంత సంపాదించవచ్చు?",
+     expect: {category: vocational_match, trade: general-duty-assistant}}
+  - {id: asp-te3, lang: te, district: Kalaburagi, goal: "మేకప్ ఆర్టిస్ట్", text: "ఎంత సంపాదించవచ్చు?",
+     expect: {category: unknown, trade: null}}

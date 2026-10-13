@@ -20,9 +20,9 @@ Scheme administrators get a dashboard showing **where and why parental resistanc
 
 | # | Expected outcome | What we built |
 |---|---|---|
-| 1 | Conversational tool for learners + parents, ≥1 regional language + English | Joint chat in **English, Kannada, Hindi and Telugu** (voice in/out per language); three ways to take part — *answer together* (side by side), *parent on their own phone* (QR + family code, own language), *learner only*; Family Alignment Cards feed the conversation; short, kind answers (reassure → one fact → next step) |
+| 1 | Conversational tool for learners + parents, ≥1 regional language + English | Joint chat in **English, Kannada, Hindi and Telugu** (voice in/out per language); three ways to take part — *answer together* (side by side), *parent on their own phone* (QR + family code, own language), *learner only*; Family Alignment Cards feed the conversation; short, kind answers (reassure → one fact → next step); **the learner names their own goal** (say/type it in any language, browse, or "Not sure yet") and the parent's hope is asked separately and shown side by side |
 | 2 | Verified outcome-data backend | Status-tagged records (`verified / historical / demo / unavailable`), **numbers only from database tool calls**, a **numeric guardrail** that rejects any unsupported number, district → state → national fallback reported honestly, organiser-data importer |
-| 3 | Admin dashboard: where and why resistance is concentrated | District map (size = sessions, colour = resistance share), concerns by district and income, model sentiment vs self-reported mood (separate), funnel, Alignment Gaps, **Evidence Gap Radar**, data quality, CSV export, small-cell suppression |
+| 3 | Admin dashboard: where and why resistance is concentrated | District map (size = sessions, colour = resistance share), concerns by district and income, model sentiment vs self-reported mood (separate), funnel, Alignment Gaps, **Evidence Gap Radar**, data quality, CSV export, small-cell suppression; **top aspirations in learners' own words, unmatched goals, learner goal vs parent hope**; **Admin → Trades** to add trades, everyday words, sectors and career steps without code changes |
 | 4 | Low-literacy, low-digital-familiarity design | Voice input and read-aloud (en/kn/hi/te-IN), picture cards, **whole journey without typing in all four languages** (tested), 18px+ text, 48px+ targets, helper mode, **Lite mode** for low-end phones, light and pure-black dark themes, WCAG AA contrast in both (tested) |
 | 5 | Escalation to human counsellors | Automatic triggers (request, missing data ×2, 3 negative parent turns, sensitive topics, repeated guardrail failure), bilingual 3-line case summary, **live chat** (WebSocket + polling fallback) or **call-back** with explicit consent and encrypted, deletable phone numbers |
 
@@ -70,14 +70,14 @@ The frontend never calls the LLM; keys stay on the backend. If the key is missin
 ## Demo walkthrough (about 5 minutes)
 
 1. **Landing** — a real night sky (Yale Bright Star Catalogue, as seen from Bengaluru tonight). Choose **ಕನ್ನಡ / हिन्दी / తెలుగు / English** (tap *Hear* to listen to each name), tap **Start together**. Toggle **Dark** and **Lite** in the header (Lite = no WebGL, the same sky as a still image).
-2. **Onboarding** — each question is read aloud. Choose how you are taking part (**together**, **parent on own phone**, or **learner only**), then **Kalaburagi**, Class 10, interests, worries (Safety, Income), optionally income, and helper mode.
-3. **Family Alignment Cards** — *together*: both rows of five cards on one screen, saved together. *Two phones*: the learner's phone shows a QR + 4-digit code; open `/join` on a second phone, choose another language, and arrange the parent's cards there. The result is gentle: "You both value … You see … differently."
+2. **Onboarding** — each question is read aloud. Choose how you are taking part (**together**, **parent on own phone**, or **learner only**), then **Kalaburagi**, Class 10, then **"What would you like to do or become?"** — say or type it (try "bijli mistri", "bike mechanic" or "drone pilot"), browse areas of work, or tap **Not sure yet** for picture questions. The app shows what it understood and the closest trades it has data on; the family confirms. Answering together, the parent is then asked "What do you hope your child will do?". Then worries (Safety, Income), optionally income, and helper mode.
+3. **Family Alignment Cards** — *together*: both rows of five cards on one screen, saved together. *Two phones*: the learner's phone shows a QR + 4-digit code; open `/join` on a second phone, choose another language, and arrange the parent's cards there. The result is gentle: "You both value … You see … differently." If the learner's goal and the parent's hope differ, both are shown side by side: "Let's look at both."
 4. **Mood check** — five faces each, for learner and parent.
 5. **Chat (no typing)** — tap **How much can I earn?** → an **Outcome card** with placement rate, earnings range, sample size, period, data level and the **Demo data** badge. Ask about **EV** in Kalaburagi → "District data is not available; this is the state-level figure." Tap **What are the next steps?** → the **constellation career ladder**, with the steps the learner can start now glowing gold.
-6. **Honest fallback** — ask "How much does a plumber earn?" → "I don't have verified data for this yet…" plus a counsellor offer, and an entry in the Evidence Gap Radar.
+6. **Honest fallback** — ask "How much does a plumber earn?" → "I don't have verified data for this yet…" plus a counsellor offer, and an entry in the Evidence Gap Radar. With a goal such as "doctor" or "drone pilot", the chat answers kindly with no figures and offers a counsellor or related options; **Change goal** in the chat header updates it at any time.
 7. **Escalation** — open `/counsellor` in another tab (PIN), then ask "Is it safe for my daughter to travel at night?" → a case appears instantly with a bilingual summary. Use live chat between the two tabs, or request a call-back.
 8. **Finish** → mood after → **Family Summary Card**, with a QR code, save as image, and share.
-9. **Admin** (`/admin`) — the simulated-data banner; Kalaburagi stands out on the map (safety, income and distance worries); alignment gaps, funnel, Evidence Gap Radar, data quality and CSV export.
+9. **Admin** (`/admin`) — the simulated-data banner; Kalaburagi stands out on the map (safety, income and distance worries); alignment gaps, funnel, Evidence Gap Radar, top aspirations, unmatched aspirations, learner goal vs parent hope, data quality and CSV export. The **Trades** tab adds or edits trades, everyday words, sectors and career steps in four languages.
 
 ## Loading organiser data
 
@@ -90,16 +90,26 @@ python -m seed.import_csv --file data.csv --mapping mapping.yaml --status verifi
 Every row is validated. Rejected rows go to `import_errors.csv` with reasons, units are converted (annual ↔ monthly,
 lakh → rupees), and missing values are never guessed. Imported records outrank demo records for the same year and place.
 
+Sectors, trades and everyday words (synonyms) import the same way — see `seed/mapping.catalogue.example.yaml` and the
+sheets in `seed/examples/`. New trades stay `unavailable` until a source is attached:
+```bash
+python -m seed.import_csv --kind sectors  --file sectors.csv  --mapping seed/mapping.catalogue.example.yaml --dry-run
+python -m seed.import_csv --kind trades   --file trades.csv   --mapping seed/mapping.catalogue.example.yaml --status unavailable
+python -m seed.import_csv --kind synonyms --file synonyms.csv --mapping seed/mapping.catalogue.example.yaml
+```
+
 ## Tests and evaluation
 
 ```bash
-cd backend && python -m pytest                 # 121 tests: data tools, guardrail (4 scripts), languages, family codes, escalation, analytics, importer, chat
-python -m eval.run_eval                        # 40 questions (10 each en/kn/hi/te) → eval/results.md (generated)
-cd ../frontend && npm test                     # Vitest: i18n completeness, contrast (light + dark), star maths, voice, Lite mode
-npx playwright test                            # e2e: tap-only journeys in 4 languages, two-phone family, dark mode, sky, a11y, escalation, admin
+cd backend && python -m pytest                 # 210 tests: data tools, guardrail, languages, goals and matching, catalogue admin + import, family codes, escalation, analytics, chat
+python -m eval.run_eval                        # 40 concern questions (10 each en/kn/hi/te) + 12 aspiration questions → eval/results.md
+cd ../frontend && npm test                     # Vitest: i18n completeness, no hard-coded trades, search, contrast (light + dark), star maths, voice, Lite mode
+npx playwright test                            # e2e: journeys in 4 languages, goal flows, two-phone family, dark mode, sky, a11y, escalation, admin + trades
 ```
-The e2e tests expect the backend on :8000 (mock mode, seeded) and the frontend on :5173.
-Latest eval: **40/40** questions pass every check in mock mode — see [backend/eval/results.md](backend/eval/results.md).
+The e2e tests expect the backend on :8000 (mock mode, seeded) and the frontend on :5173. Playwright retries a failing
+test once with a trace, so a flaky test is reported as "flaky" (traces in `frontend/test-results/`).
+Latest eval (mock mode): **40/40** concern questions and **12/12** aspiration questions pass every check — see
+[backend/eval/results.md](backend/eval/results.md).
 
 ## Architecture
 
@@ -128,6 +138,7 @@ accessibility status in [docs/accessibility_checklist.md](docs/accessibility_che
 - **Voice** depends on the device: many Android phones lack Kannada or Telugu speech voices or recognisers (the app then shows a calm notice in that language and the tap options keep working). `lib/voice.ts` is ready for a server-side provider such as Bhashini.
 - **Live-chat rooms are in-process**, so run one backend worker (or add Redis pub/sub to scale out). Polling keeps working either way.
 - **Mock mode** answers from templates and covers the pilot's trades and concerns. Open-ended questions need `LLM_MODE=anthropic`.
+- **Goal matching** in mock mode uses everyday-word lists and fuzzy matching; the starter synonyms and the degree-career / professional-course word lists are AI-written and need native review. Real mode (fast model, candidate list only) has been tested with a fake model, not yet with a real API key.
 - **Sentiment** in mock mode comes from keywords and is approximate. The dashboard labels it as a model estimate, separate from self-reported mood.
 - Lighthouse mobile scores have not yet been measured on a deployed build (target ≥ 80 in Lite mode).
 

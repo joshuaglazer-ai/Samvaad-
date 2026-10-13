@@ -1,4 +1,4 @@
-"""Run the 30 evaluation questions and write eval/results.md (generated — do not hand-edit).
+"""Run the 40 concern questions and 12 aspiration questions; write eval/results.md (generated — do not hand-edit).
 
     python -m eval.run_eval            # uses LLM_MODE from .env (mock by default)
 
@@ -18,7 +18,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import models as m
+from app import lang_text as _lt
+from app.aspiration import match_fuzzy
 from app.chat import handle_turn
+from app.data_tools import DataTools
+from app.goals import save_goal
 from app.config import get_settings
 from app.db import Base
 from app.guardrail import check
@@ -92,11 +96,88 @@ def run_one(db, q: dict, llm) -> dict:
     return {"q": q, "actual": actual, "checks": checks, "pass": all(checks.values())}
 
 
+NUMBER_CHARS = "0123456789०१२३४५६७८९౦౧౨౩౪౫౬౭౮౯೦೧೨೩೪೫೬೭೮೯₹"
+NO_MATCH_KEY = {"degree_career": "degree", "professional_course": "professional", "unknown": "unknown"}
+
+
+def run_aspiration(db, q: dict, llm) -> dict:
+    """The learner says a goal in their own words; the app confirms the closest database trade (if any), as the
+    onboarding screen does; then the family asks a question in chat."""
+    s = m.SessionRow(language=q["lang"], district=q["district"], learner_education=q.get("education", "class_10"),
+                     learner_interests=[], top_concerns=[], consent_given=True)
+    db.add(s)
+    db.commit()
+    if llm.is_mock:
+        r = match_fuzzy(q["goal"], q["lang"], DataTools(db).trade_terms())
+    else:  # real mode: the fast model picks from the candidate list (preview only; nothing stored)
+        r = DataTools(db, language=q["lang"]).match_aspiration(q["goal"], q["lang"], llm=llm)
+        db.rollback()
+    save_goal(db, s, "learner", q["goal"], q["lang"], "text", [r["candidates"][0]["slug"]] if r["matched"] else [], True)
+    db.commit()
+    out = handle_turn(db, s.id, "learner", q["text"], q["lang"], llm=llm)
+    bot = db.get(m.Message, out["message_id"])
+    exp = q["expect"]
+    trade = (s.matched_trade_slugs or [None])[0]
+    card_trades = [c["data"].get("trade_slug") for c in out["cards"] if not c["data"].get("unavailable")]
+    reply = out["reply_text"]
+    gaps = list(db.scalars(select(m.EvidenceGap).where(m.EvidenceGap.session_id == s.id,
+                                                       m.EvidenceGap.tool_name == "match_aspiration")))
+    no_trade = exp["trade"] is None
+    actual = {"category": s.aspiration_category, "trade": trade, "card_trades": card_trades, "gaps": len(gaps),
+              "tools": [c["name"] for c in bot.tool_calls], "guardrail": out["guardrail_status"], "reply": reply,
+              "words": len(reply.split())}
+    nomatch_line = _lt.GOAL_NOMATCH[q["lang"]][NO_MATCH_KEY[exp["category"]]] if no_trade else ""
+    checks = {
+        "category": actual["category"] == exp["category"],
+        "trade": trade == exp["trade"],  # database trades only; never forced when nothing fits
+        # A matched goal is what the chat answers about; an unmatched goal gets no figures and no card.
+        "answers_goal": (card_trades[:1] == [exp["trade"]]) if not no_trade
+        else (not card_trades and not any(ch in reply for ch in NUMBER_CHARS)),
+        "kind_no_match": not no_trade or reply.startswith(nomatch_line),
+        "gap_logged": (len(gaps) == 1) if no_trade else (len(gaps) == 0),
+        "counsellor_offered": not no_trade or any(w in reply.lower() for w in COUNSELLOR_WORDS),
+        "guardrail": actual["guardrail"] in ("pass", "regenerated", "na"),
+        "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
+        "no_promises": not any(w.lower() in reply.lower() for w in PROMISE_WORDS),
+    }
+    return {"q": q, "actual": actual, "checks": checks, "pass": all(checks.values())}
+
+
 def md_escape(s: str) -> str:
     return s.replace("|", "\\|").replace("\n", " ")
 
 
-def write_report(results: list[dict], mode: str, path: Path) -> None:
+def aspiration_section(results: list[dict]) -> list[str]:
+    n = len(results)
+    agg = {k: sum(r["checks"][k] for r in results) for k in results[0]["checks"]}
+    lines = [
+        "", "## Aspiration questions (Update 3)", "",
+        f"All checks passed: **{sum(r['pass'] for r in results)}/{n}** (3 per language; 2 degree careers, 2 unknown goals, "
+        "1 professional course).", "",
+        "| Check | Passed |", "|---|---|", *[f"| {k} | {v}/{n} |" for k, v in agg.items()], "",
+        "Checks: **category** goal sorted as expected · **trade** matched to the expected database trade, or to none "
+        "(never forced) · **answers_goal** a matched goal is what the chat answers about; an unmatched goal gets no "
+        "figures and no card · **kind_no_match** the agreed kind line for degree careers, professional courses and "
+        "unknown goals · **gap_logged** one evidence gap for an unmatched goal, none for a matched one · "
+        "**counsellor_offered** for unmatched goals · **guardrail**, **length**, **no_promises** as above.", "",
+        "| ID | Lang | Goal (their words) | Category (exp → act) | Trade (exp → act) | Card | Words | Result |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for r in results:
+        q, a, e = r["q"], r["actual"], r["q"]["expect"]
+        result = "PASS" if r["pass"] else "FAIL: " + ", ".join(k for k, v in r["checks"].items() if not v)
+        cards = ", ".join(x or "?" for x in a["card_trades"]) or "—"
+        lines.append(f"| {q['id']} | {q['lang']} | {md_escape(q['goal'])} | {e['category']} → {a['category']} | "
+                     f"{e['trade'] or '—'} → {a['trade'] or '—'} | {cards} | {a['words']} | {result} |")
+    lines += ["", "### Aspiration replies", ""]
+    for r in results:
+        lines.append(f"**{r['q']['id']}** — goal “{md_escape(r['q']['goal'])}”, then: {md_escape(r['q']['text'])}  ")
+        lines.append(f"> {md_escape(r['actual']['reply'])}")
+        lines.append("")
+    return lines
+
+
+def write_report(results: list[dict], mode: str, path: Path, aspirations: list[dict] | None = None) -> None:
     n = len(results)
     passed = sum(r["pass"] for r in results)
     agg = {k: sum(r["checks"][k] for r in results) for k in results[0]["checks"]}
@@ -134,6 +215,8 @@ def write_report(results: list[dict], mode: str, path: Path) -> None:
         lines.append(f"**{r['q']['id']}** — {md_escape(r['q']['text'])}  ")
         lines.append(f"> {md_escape(r['actual']['reply'])}")
         lines.append("")
+    if aspirations:
+        lines += aspiration_section(aspirations)
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -141,7 +224,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=str(HERE / "results.md"))
     args = ap.parse_args()
-    questions = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))["questions"]
+    spec = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))
+    questions, aspirations = spec["questions"], spec.get("aspirations", [])
     llm = get_llm()
     mode = "mock" if get_settings().use_mock_llm else f"anthropic ({get_settings().anthropic_model})"
     results = []
@@ -151,9 +235,21 @@ def main() -> None:
             results.append(run_one(db, q, llm))
         finally:
             db.close()
-    write_report(results, mode, Path(args.out))
+    asp_results = []
+    for q in aspirations:
+        db = fresh_db()
+        try:
+            asp_results.append(run_aspiration(db, q, llm))
+        finally:
+            db.close()
+    write_report(results, mode, Path(args.out), asp_results)
     passed = sum(r["pass"] for r in results)
     print(f"{passed}/{len(results)} questions passed all checks → {args.out}")
+    print(f"{sum(r['pass'] for r in asp_results)}/{len(asp_results)} aspiration questions passed all checks")
+    for r in asp_results:
+        if not r["pass"]:
+            failed = [k for k, v in r["checks"].items() if not v]
+            print(f"  FAIL {r['q']['id']}: {failed} actual={ {k: r['actual'][k] for k in ('category', 'trade', 'card_trades', 'gaps')} }")
     for r in results:
         if not r["pass"]:
             print(f"  FAIL {r['q']['id']}: {[k for k, v in r['checks'].items() if not v]} actual={ {k: r['actual'][k] for k in ('concern', 'tools', 'data_found', 'escalated')} }")
