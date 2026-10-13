@@ -11,7 +11,9 @@ import MicButton from "../components/chat/MicButton";
 import QuickReplies from "../components/chat/QuickReplies";
 import TypingStars from "../components/chat/TypingStars";
 import EscalationPanel from "../components/chat/EscalationPanel";
-import { api, type EscalationInfo } from "../lib/api";
+import Modal from "../components/ui/Modal";
+import GoalPicker from "../components/goal/GoalPicker";
+import { api, type EscalationInfo, type GoalComparison, type GoalDraft } from "../lib/api";
 import { useAppState, type Speaker } from "../lib/state";
 import { getDeviceId } from "../lib/deviceId";
 import { asLang, languageName, type Lang } from "../lib/languages";
@@ -37,7 +39,29 @@ export default function Chat() {
   const [escalation, setEscalation] = useState<EscalationInfo | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [goals, setGoals] = useState<GoalComparison | null>(null);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const [goalSaved, setGoalSaved] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  // The goal this phone can change: the parent's hope on a parent's own phone, otherwise the learner's goal.
+  const goalWho = profile.role === "parent" ? "parent" : "learner";
+  const myGoal = goals?.[goalWho] ?? null;
+
+  useEffect(() => {
+    if (sessionId) api.aspirations(sessionId, i18n.language).then(setGoals).catch(() => undefined);
+  }, [sessionId, i18n.language]);
+
+  const changeGoal = async (g: GoalDraft) => {
+    if (!sessionId) return;
+    try {
+      setGoals(await api.saveAspiration(sessionId, goalWho, g));
+      setGoalOpen(false);
+      setGoalSaved(true);
+      api.event({ session_id: sessionId, event_type: "goal_changed", payload: { who: goalWho, source: g.source } }).catch(() => undefined);
+    } catch {
+      setError(t("app.offline"));
+    }
+  };
 
   const starters = [1, 2, 3, 4, 5, 6].map((n) => t(`chat.starter${n}`));
 
@@ -136,6 +160,20 @@ export default function Chat() {
           <Button variant="ghost" iconRight="arrowRight" onClick={() => navigate("/mood/post")}>{t("chat.finish")}</Button>
         </div>
       </div>
+      {profile.participation_mode !== "learner_only" || goalWho === "learner" ? (
+        <div className="glass flex flex-wrap items-center justify-between gap-2 px-3 py-2" data-testid="chat-goal">
+          <p className="flex min-w-0 items-center gap-2 text-base text-ink-900" aria-live="polite">
+            <Icon name="star" size={20} className="shrink-0 text-primary-700" />
+            <span>{goalWho === "parent" ? t("goal.parentHope") : t("goal.yourGoal")}:</span>
+            <strong className="truncate" data-testid="chat-goal-label">{myGoal?.label || t("goal.notChosen")}</strong>
+            {goalSaved && <span className="sr-only">{t("goal.updated")}</span>}
+          </p>
+          <Button variant="ghost" icon="refresh" onClick={() => { setGoalSaved(false); setGoalOpen(true); }}>{t("goal.change")}</Button>
+        </div>
+      ) : null}
+      <Modal open={goalOpen} onClose={() => setGoalOpen(false)} title={goalWho === "parent" ? t("goal.parentQuestion") : t("goal.question")}>
+        <GoalPicker who={goalWho} district={profile.district} onDone={changeGoal} />
+      </Modal>
       {profile.helper_mode && (
         <p className="flex items-start gap-2 rounded-2xl bg-lavender-100 px-3 py-2 text-base text-ink-900">
           <Icon name="helper" className="mt-0.5 shrink-0 text-primary-700" /> {t("chat.helperTip")}

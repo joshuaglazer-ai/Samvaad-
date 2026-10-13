@@ -28,10 +28,6 @@ OTHER_TRADES = {
     "beautician": ["beauti", "ಬ್ಯೂಟಿ"], "carpenter": ["carpent", "ಬಡಗಿ"], "data-entry-operator": ["data entry"],
     "drone-technician": ["drone", "ಡ್ರೋನ್"], "chef": ["chef", "cook", "ಅಡುಗೆ"],
 }
-INTEREST_TO_TRADE = {
-    "electricity": "electrician", "nature_solar": "solar-pv-installer", "vehicles": "two-wheeler-service-technician",
-    "machines": "automotive-service-technician", "helping": "general-duty-assistant", "computers": "ev-service-technician",
-}
 
 INTENT_PATTERNS = {
     "progression": ["next step", "ladder", "future", "grow", "diploma",
@@ -91,6 +87,10 @@ def plan(text: str, ctx: dict) -> list[tuple[str, dict]]:
     intent = detect_intent(text)
     trade = detect_trade(text) or ctx.get("last_trade") or ctx.get("suggested_trade")
     district = ctx.get("district")
+    goal = ctx.get("goal") or {}
+    if not trade and intent != "options" and goal.get("text") and not goal.get("trades"):
+        # The learner's own goal has no database trade: check it again (logs the gap once) and answer kindly.
+        return [("match_aspiration", {"text": goal["text"], "language": ctx.get("language", "en")})]
     if intent == "options" or not trade:
         return [("list_trades", {"language": ctx.get("language", "en")})]
     if intent == "progression":
@@ -281,6 +281,15 @@ def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
     if not results:
         return f"{opener} {t['nodata']}"
     name, res = results[0]
+    if name == "match_aspiration":
+        g = _lt.GOAL_NOMATCH.get(lang, _lt.GOAL_NOMATCH["en"])
+        if res.get("matched"):
+            names = ", ".join(c["name"] for c in res["candidates"])
+            return g["found"].format(names=names)
+        if res.get("category") == "degree_career":
+            extra = g["related"].format(sector=res["related_sector_name"])                 if res.get("related") and res.get("related_sector_name") else ""
+            return g["degree"] + extra
+        return g["unknown"]
     if not res.get("found"):
         if name == "get_providers" and res.get("trade_name"):
             miss = t["providers_none"].format(trade=res["trade_name"], district=_district_name(ctx.get("district"), lang))

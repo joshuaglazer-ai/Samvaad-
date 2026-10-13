@@ -111,3 +111,35 @@ for (const theme of ["light", "dark"] as const) {
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/goal-confirm-${theme}.png`, fullPage: true });
   });
 }
+
+test("change goal from chat: an unmatched goal gets a kind reply, a new goal is used next", async ({ page }) => {
+  const res = await page.request.post(`${API}/api/session`, { data: { language: "en", district: "Mysuru",
+    learner_education: "class_10", consent_given: true, participation_mode: "learner_only",
+    aspiration: { text: "drone pilot", language: "en", source: "text" } } });
+  const { session_id } = await res.json();
+  await page.addInitScript((id) => {
+    sessionStorage.setItem("samvaad.readAloud", "false");
+    localStorage.setItem("samvaad.lite", "1");
+    sessionStorage.setItem("samvaad.session", JSON.stringify(id));
+    sessionStorage.setItem("samvaad.profile", JSON.stringify({ language: "en", participation_mode: "learner_only", role: "learner",
+      district: "Mysuru", learner_education: "class_10", learner_interests: [], top_concerns: [], helper_mode: false }));
+  }, session_id);
+  await page.goto("/chat");
+  await expect(page.getByTestId("chat-goal-label")).toHaveText("drone pilot");
+  await page.getByRole("button", { name: "How much can I earn?" }).click();
+  await expect(page.getByText(/I don't have reliable information on this yet/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Show other options" })).toBeVisible();
+
+  await page.getByRole("button", { name: en.goal.change }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("radio", { name: new RegExp(esc(en.goal.say)) }).click();
+  await dialog.getByLabel(en.goal.inputLabel).fill("wiring work");
+  await dialog.getByRole("button", { name: en.goal.check }).click();
+  await dialog.getByRole("button", { name: en.goal.yesRight }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("chat-goal-label")).toHaveText("Wireman");
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/chat-goal.png`, fullPage: true });
+  await page.getByLabel(/Type your question|question/i).first().fill("How much can I earn?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator("article").first()).toContainText("₹", { timeout: 15_000 });
+});

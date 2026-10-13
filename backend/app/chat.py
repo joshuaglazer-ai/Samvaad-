@@ -19,7 +19,7 @@ from . import lang_text as _lt
 from .guardrail import FALLBACK_TEXT, check, correction_note
 from .i18n import detect_script, norm_lang
 from .llm import BaseLLM, LLMResponse, get_llm
-from .mock_counsellor import INTEREST_TO_TRADE
+from .goals import compare_goals
 from .prompts import SYSTEM_PROMPT, context_block
 from .sentiment import is_sensitive, tag_message, wants_counsellor
 
@@ -91,8 +91,9 @@ def trades_discussed(db: Session, session_id: str) -> list[str]:
 
 def build_context(db: Session, s: m.SessionRow, speaker: str, language: str, user_text: str) -> dict:
     discussed = trades_discussed(db, s.id)
-    # The learner's own confirmed goal comes first (Update 3); older sessions may still carry interest chips.
-    suggested = next(iter(s.matched_trade_slugs or []), None) or         next((INTEREST_TO_TRADE[i] for i in (s.learner_interests or []) if i in INTEREST_TO_TRADE), None)
+    # The learner's own goal comes first (Update 3): its matched trade, or — when nothing matched — the words as said.
+    goals = compare_goals(db, s, language)
+    suggested = next(iter(s.matched_trade_slugs or []), None)
     return {
         "language": language, "speaker": speaker, "district": s.district,
         "learner_education": s.learner_education,
@@ -101,6 +102,7 @@ def build_context(db: Session, s: m.SessionRow, speaker: str, language: str, use
         "top_concerns": s.top_concerns or [], "alignment": session_alignment(db, s.id),
         "trades_discussed": discussed, "last_trade": discussed[-1] if discussed else None,
         "suggested_trade": suggested, "user_text": user_text,
+        "goal": goals["learner"], "parent_hope": goals["parent"], "goals_differ": goals["differ"],
         "turn": db.scalar(select(func.count()).select_from(m.Message).where(
             m.Message.session_id == s.id, m.Message.role == "assistant")) or 0,
     }
@@ -152,8 +154,10 @@ def build_card(tool: str, out: dict, language: str) -> dict | None:
             "evidence": {**base_evidence, "geo_level": out.get("geo_level_used")}}
 
 
-def quick_replies(cards: list[dict], language: str, escalated: bool) -> list[str]:
+def quick_replies(cards: list[dict], language: str, escalated: bool, goal_unmatched: bool = False) -> list[str]:
     q = QUICK.get(language, QUICK["en"])
+    if goal_unmatched:  # no data for their goal: offer related options and a person, not more figures
+        return [q["options"]] + ([] if escalated else [q["counsellor"]])
     shown = {c["type"] for c in cards if not c["data"].get("unavailable")}
     order = ["outcome", "ladder", "costs", "providers"]
     picks = [q[k] for k in order if k not in shown][:2] if shown else [q["outcome"], q["ladder"]]
@@ -291,7 +295,9 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         "message_id": assistant.id,
         "reply_text": reply,
         "cards": cards,
-        "quick_replies": quick_replies(cards, language, escalated=escalation is not None),
+        "quick_replies": quick_replies(cards, language, escalated=escalation is not None,
+                                       goal_unmatched=any(n == "match_aspiration" and not o.get("matched")
+                                                          for n, o, _ in outputs)),
         "guardrail_status": status,
         "escalation": escalation,
         "reply_language": language,

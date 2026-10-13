@@ -251,6 +251,9 @@ class DataTools:
                     m.EvidenceGap.session_id == self.ctx.session_id, m.EvidenceGap.tool_name == "match_aspiration")))
             if not already:  # saving the same goal again is not a new gap
                 self._gap("match_aspiration", None, normalise_district(district), query)
+        if result.get("related_sector"):
+            sec = self.db.scalar(select(m.Sector).where(m.Sector.slug == result["related_sector"]))
+            result["related_sector_name"] = tr(sec.names, lang, f"sector.{sec.slug}.names") if sec else None
         return {"found": result["matched"], "data_status": None, "source": None, "limitations": [],
                 "limitation_codes": [] if result["matched"] else ["no_data"], **result}
 

@@ -72,6 +72,21 @@ Examples:
   harassment), when the family asks for a person, or when you cannot help. Respond with care and share only factual
   information; tell them a counsellor will join.
 
+# The learner's own goal
+- The context block may give learner_goal (the learner's own words and, if it matched, the database trade) and
+  parent_hope. Answer about the learner's chosen goal first. Bring in other trades only when the family asks for
+  options, or when there is no data for the goal.
+- If the family names a new goal, call match_aspiration. Only talk about trades it returns; never invent one.
+- If the goal has no database match:
+  - Degree career (doctor, engineer, teacher, police officer…): "That's a wonderful goal. I don't have verified data
+    on this path here. A counsellor can guide you well." If match_aspiration returned related options, you may add
+    that you can show skill-based options in that sector that some learners start with. Never pressure, never suggest
+    the goal is unrealistic.
+  - Anything else: "Thank you for sharing. I don't have reliable information on this yet. Would you like to talk to a
+    counsellor, or look at related options?"
+  - No numbers in either case.
+- If learner_goal and parent_hope differ, explain both paths fairly, using only data from tools. Neither is better.
+
 # Counselling stance
 - Address the current speaker (learner, parent or helper) named in the context block. Respect both learner and parent.
 - If the alignment cards show different priorities, acknowledge both views fairly. Never frame disagreement as a problem.
@@ -110,6 +125,14 @@ def context_block(ctx: dict) -> str:
                      f"both value: {shared}; biggest difference: {ALIGNMENT_LABELS.get(al.get('biggest_difference'), 'none')}")
     if ctx.get("trades_discussed"):
         lines.append(f"- trades already discussed: {', '.join(ctx['trades_discussed'])}")
+    for key, label in (("goal", "learner_goal"), ("parent_hope", "parent_hope")):
+        g = ctx.get(key)
+        if g:
+            said = f'"{g["text"]}"' if g.get("text") else "(picked from the list)"
+            match = ", ".join(x["slug"] for x in g.get("trades", [])) or f"no database match ({g.get('category')})"
+            lines.append(f"- {label}: {said} → {match}{'' if g.get('confirmed') else ' (not confirmed)'}")
+    if ctx.get("goals_differ"):
+        lines.append("- learner_goal and parent_hope differ: explain both fairly")
     if ctx.get("suggested_trade"):
-        lines.append(f"- trade that fits the learner's interests (if they have not named one): {ctx['suggested_trade']}")
+        lines.append(f"- trade for the learner's goal (if they have not named another): {ctx['suggested_trade']}")
     return "\n".join(lines)

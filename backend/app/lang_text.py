@@ -296,3 +296,25 @@ QUIZ_REASON = {
            "machines": "యంత్రాలు ఇష్టమైతే బాగుంటుంది", "outdoors": "బయట పని చేయడం ఇష్టమైతే బాగుంటుంది",
            "computers": "కంప్యూటర్లు, కొత్త టెక్నాలజీ ఇష్టమైతే బాగుంటుంది"},
 }
+
+# Chat replies when the learner's own goal has no database match (Update 3, Section 3.3). No numbers, no invented
+# trade; the goal is respected and a counsellor is offered. `related` is added only when the database has related
+# skill options in a sector. Needs native review.
+GOAL_NOMATCH = {
+    "en": {"degree": "That's a wonderful goal. I don't have verified data on this path here. A counsellor can guide you well.",
+           "related": " If you like, I can also show skill-based options in {sector} that some learners start with.",
+           "unknown": "Thank you for sharing. I don't have reliable information on this yet. Would you like to talk to a counsellor, or look at related options?",
+           "found": "For your goal, the closest options we have information on are {names}. Which one would you like to look at?"},
+    "kn": {"degree": "ಇದು ಒಳ್ಳೆಯ ಗುರಿ. ಈ ದಾರಿಯ ಬಗ್ಗೆ ಇಲ್ಲಿ ಪರಿಶೀಲಿಸಿದ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರು ಚೆನ್ನಾಗಿ ಮಾರ್ಗದರ್ಶನ ಮಾಡಬಹುದು.",
+           "related": " ನೀವು ಬಯಸಿದರೆ, ಕೆಲವು ವಿದ್ಯಾರ್ಥಿಗಳು ಶುರು ಮಾಡುವ {sector} ಕ್ಷೇತ್ರದ ಕೌಶಲ್ಯ ಆಯ್ಕೆಗಳನ್ನೂ ತೋರಿಸಬಲ್ಲೆ.",
+           "unknown": "ಹಂಚಿಕೊಂಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಇದರ ಬಗ್ಗೆ ಇನ್ನೂ ನಂಬಲರ್ಹ ಮಾಹಿತಿ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ಸಲಹೆಗಾರರೊಂದಿಗೆ ಮಾತನಾಡಲು ಅಥವಾ ಸಂಬಂಧಿತ ಆಯ್ಕೆಗಳನ್ನು ನೋಡಲು ಬಯಸುತ್ತೀರಾ?",
+           "found": "ನಿಮ್ಮ ಗುರಿಗೆ ನಮ್ಮಲ್ಲಿ ಮಾಹಿತಿ ಇರುವ ಹತ್ತಿರದ ಆಯ್ಕೆಗಳು: {names}. ಯಾವುದನ್ನು ನೋಡೋಣ?"},
+    "hi": {"degree": "यह बहुत अच्छा लक्ष्य है। इस रास्ते के बारे में यहाँ मेरे पास जाँची हुई जानकारी नहीं है। काउंसलर आपको अच्छे से रास्ता दिखा सकते हैं।",
+           "related": " आप चाहें तो {sector} में कुछ हुनर वाले विकल्प भी दिखा सकते हैं, जिनसे कुछ छात्र शुरुआत करते हैं।",
+           "unknown": "बताने के लिए धन्यवाद। इसके बारे में अभी मेरे पास भरोसेमंद जानकारी नहीं है। क्या आप काउंसलर से बात करना चाहेंगे, या मिलते-जुलते विकल्प देखना चाहेंगे?",
+           "found": "आपके लक्ष्य के सबसे करीबी विकल्प, जिनकी जानकारी हमारे पास है: {names}। आप कौन-सा देखना चाहेंगे?"},
+    "te": {"degree": "ఇది చాలా మంచి లక్ష్యం. ఈ దారి గురించి ఇక్కడ నా దగ్గర ధృవీకరించిన సమాచారం లేదు. కౌన్సిలర్ మీకు బాగా దారి చూపగలరు.",
+           "related": " మీకు కావాలంటే, కొంతమంది విద్యార్థులు మొదలుపెట్టే {sector} నైపుణ్య ఆప్షన్లు కూడా చూపిస్తాను.",
+           "unknown": "చెప్పినందుకు ధన్యవాదాలు. దీని గురించి ఇంకా నా దగ్గర నమ్మదగిన సమాచారం లేదు. కౌన్సిలర్‌తో మాట్లాడాలనుకుంటున్నారా, లేదా సంబంధిత ఆప్షన్లు చూడాలనుకుంటున్నారా?",
+           "found": "మీ లక్ష్యానికి మా దగ్గర సమాచారం ఉన్న దగ్గరి ఆప్షన్లు: {names}. ఏది చూద్దాం?"},
+}
