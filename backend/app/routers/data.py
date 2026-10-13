@@ -25,10 +25,19 @@ def districts() -> list[dict]:
     return [{"name": d, "lat": DISTRICT_COORDS[d][0], "lng": DISTRICT_COORDS[d][1]} for d in DISTRICTS]
 
 
+@router.get("/sectors")
+def sectors(language: str = "en", db: Session = Depends(get_db)) -> list[dict]:
+    r = DataTools(db, language=language).list_sectors()
+    db.rollback()
+    return r["records"]
+
+
 @router.get("/trades")
 def trades(language: str = "en", sector: str | None = None, db: Session = Depends(get_db)) -> list[dict]:
     r = DataTools(db, language=language).list_trades(sector=sector)
     db.rollback()  # browsing the catalogue is not an evidence gap
+    if sector and not r["found"]:
+        raise HTTPException(404, "sector not found")
     return r["records"]
 
 

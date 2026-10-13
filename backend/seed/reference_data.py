@@ -27,7 +27,7 @@ BSC_NURSING = L("B.Sc Nursing", "ಬಿ.ಎಸ್ಸಿ ನರ್ಸಿಂಗ್
 
 TRADES = [
     {
-        "slug": "electrician", "sector": "Electrical", "nsqf_level": 4, "duration_months": 24, "icon": "bolt",
+        "slug": "electrician", "sector": "electrical", "nsqf_level": 4, "duration_months": 24, "icon": "bolt",
         "names": L("Electrician", "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", "इलेक्ट्रीशियन", "ఎలక్ట్రీషియన్"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
         "job_roles": {
@@ -39,7 +39,7 @@ TRADES = [
         "base": {"min": 12000, "median": 15500, "max": 22000, "placement": 72},
     },
     {
-        "slug": "wireman", "sector": "Electrical", "nsqf_level": 3, "duration_months": 24, "icon": "bolt",
+        "slug": "wireman", "sector": "electrical", "nsqf_level": 3, "duration_months": 24, "icon": "bolt",
         "names": L("Wireman", "ವೈರ್‌ಮ್ಯಾನ್", "वायरमैन", "వైర్‌మ్యాన్"),
         "entry_min_education": "class_8", "entry_requirement": CLASS_8,
         "job_roles": {
@@ -51,7 +51,7 @@ TRADES = [
         "base": {"min": 10000, "median": 13000, "max": 17000, "placement": 66},
     },
     {
-        "slug": "solar-pv-installer", "sector": "Green Energy", "nsqf_level": 4, "duration_months": 3, "icon": "sun",
+        "slug": "solar-pv-installer", "sector": "green-energy", "nsqf_level": 4, "duration_months": 3, "icon": "sun",
         "names": L("Solar PV Installer", "ಸೌರ ಫಲಕ ಅಳವಡಿಕೆ ತಂತ್ರಜ್ಞ", "सोलर पैनल इंस्टॉलर", "సోలార్ ప్యానెల్ ఇన్‌స్టాలర్"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
         "job_roles": {
@@ -63,7 +63,7 @@ TRADES = [
         "base": {"min": 11000, "median": 14500, "max": 20000, "placement": 68},
     },
     {
-        "slug": "two-wheeler-service-technician", "sector": "Automotive", "nsqf_level": 4, "duration_months": 4, "icon": "bike",
+        "slug": "two-wheeler-service-technician", "sector": "automotive", "nsqf_level": 4, "duration_months": 4, "icon": "bike",
         "names": L("Two-Wheeler Service Technician", "ದ್ವಿಚಕ್ರ ವಾಹನ ಸರ್ವಿಸ್ ತಂತ್ರಜ್ಞ", "टू-व्हीलर सर्विस टेक्नीशियन",
                    "టూ-వీలర్ సర్వీస్ టెక్నీషియన్"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
@@ -76,7 +76,7 @@ TRADES = [
         "base": {"min": 10000, "median": 13500, "max": 18000, "placement": 70},
     },
     {
-        "slug": "automotive-service-technician", "sector": "Automotive", "nsqf_level": 4, "duration_months": 6, "icon": "car",
+        "slug": "automotive-service-technician", "sector": "automotive", "nsqf_level": 4, "duration_months": 6, "icon": "car",
         "names": L("Automotive Service Technician", "ವಾಹನ ಸರ್ವಿಸ್ ತಂತ್ರಜ್ಞ", "गाड़ी सर्विस टेक्नीशियन (ऑटोमोटिव)",
                    "వాహన సర్వీస్ టెక్నీషియన్"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
@@ -89,7 +89,7 @@ TRADES = [
         "base": {"min": 12000, "median": 16000, "max": 23000, "placement": 71},
     },
     {
-        "slug": "ev-service-technician", "sector": "Automotive", "nsqf_level": 4, "duration_months": 4, "icon": "bolt",
+        "slug": "ev-service-technician", "sector": "automotive", "nsqf_level": 4, "duration_months": 4, "icon": "bolt",
         "names": L("EV Service Technician", "ವಿದ್ಯುತ್ ವಾಹನ (EV) ಸರ್ವಿಸ್ ತಂತ್ರಜ್ಞ", "ईवी (इलेक्ट्रिक गाड़ी) सर्विस टेक्नीशियन",
                    "ఈవీ (ఎలక్ట్రిక్ వాహనం) సర్వీస్ టెక్నీషియన్"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
@@ -102,7 +102,7 @@ TRADES = [
         "base": {"min": 13000, "median": 17000, "max": 24000, "placement": 69},
     },
     {
-        "slug": "general-duty-assistant", "sector": "Healthcare", "nsqf_level": 4, "duration_months": 6, "icon": "heart",
+        "slug": "general-duty-assistant", "sector": "healthcare", "nsqf_level": 4, "duration_months": 6, "icon": "heart",
         "names": L("General Duty Assistant", "ಜನರಲ್ ಡ್ಯೂಟಿ ಅಸಿಸ್ಟೆಂಟ್ (ಆಸ್ಪತ್ರೆ ಸಹಾಯಕ)", "जनरल ड्यूटी असिस्टेंट (अस्पताल सहायक)",
                    "జనరల్ డ్యూటీ అసిస్టెంట్ (ఆసుపత్రి సహాయకుడు)"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
@@ -115,7 +115,7 @@ TRADES = [
         "base": {"min": 10000, "median": 13000, "max": 17500, "placement": 74},
     },
     {
-        "slug": "home-health-aide", "sector": "Healthcare", "nsqf_level": 4, "duration_months": 4, "icon": "heart",
+        "slug": "home-health-aide", "sector": "healthcare", "nsqf_level": 4, "duration_months": 4, "icon": "heart",
         "names": L("Home Health Aide", "ಮನೆ ಆರೋಗ್ಯ ಸಹಾಯಕ", "होम हेल्थ एड (घर पर देखभाल सहायक)",
                    "హోమ్ హెల్త్ ఎయిడ్ (ఇంటి వద్ద సంరక్షణ సహాయకుడు)"),
         "entry_min_education": "class_10", "entry_requirement": CLASS_10,
@@ -128,6 +128,83 @@ TRADES = [
         "base": {"min": 9000, "median": 12000, "max": 16000, "placement": 65},
     },
 ]
+
+# Sectors (Update 3). The frontend reads these only through GET /api/sectors.
+SECTORS = [
+    {"slug": "electrical", "icon": "bolt", "sort_order": 1,
+     "names": L("Electrical", "ವಿದ್ಯುತ್ ಕೆಲಸ", "बिजली का काम", "ఎలక్ట్రికల్ పని")},
+    {"slug": "automotive", "icon": "car", "sort_order": 2,
+     "names": L("Vehicles and repair", "ವಾಹನ ಮತ್ತು ರಿಪೇರಿ", "गाड़ी और मरम्मत", "వాహనాలు, రిపేర్")},
+    {"slug": "healthcare", "icon": "heart", "sort_order": 3,
+     "names": L("Healthcare", "ಆರೋಗ್ಯ ಸೇವೆ", "स्वास्थ्य सेवा", "ఆరోగ్య సేవ")},
+    {"slug": "green-energy", "icon": "sun", "sort_order": 4,
+     "names": L("Green energy", "ಹಸಿರು ಇಂಧನ", "ग्रीन एनर्जी (सौर ऊर्जा)", "గ్రీన్ ఎనర్జీ (సోలార్)")},
+]
+
+# Work styles for the "Not sure yet" quiz: hands | people | machines | outdoors | computers.
+TRAITS = {
+    "electrician": ["hands", "machines"],
+    "wireman": ["hands", "outdoors"],
+    "solar-pv-installer": ["hands", "outdoors"],
+    "two-wheeler-service-technician": ["hands", "machines"],
+    "automotive-service-technician": ["machines", "hands"],
+    "ev-service-technician": ["machines", "computers"],
+    "general-duty-assistant": ["people"],
+    "home-health-aide": ["people"],
+}
+
+# Everyday words families use for each trade, per language — a starter set for matching what learners say.
+# Includes romanised forms people type on phones ("bijli mistri"). AI-written: needs native review.
+SYNONYMS = {
+    "electrician": {
+        "en": ["electrician", "electrical work", "current work", "electric work", "house wiring and repair"],
+        "kn": ["ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", "ಕರೆಂಟ್ ಕೆಲಸ", "ವಿದ್ಯುತ್ ಕೆಲಸ", "current kelasa", "electrician kelasa"],
+        "hi": ["इलेक्ट्रीशियन", "बिजली मिस्त्री", "बिजली का काम", "bijli mistri", "bijli ka kaam"],
+        "te": ["ఎలక్ట్రీషియన్", "కరెంట్ పని", "విద్యుత్ పని", "current pani", "electrician pani"],
+    },
+    "wireman": {
+        "en": ["wireman", "wiring", "house wiring", "wiring work"],
+        "kn": ["ವೈರ್‌ಮ್ಯಾನ್", "ವೈರಿಂಗ್ ಕೆಲಸ", "wiring kelasa"],
+        "hi": ["वायरमैन", "वायरिंग का काम", "wiring ka kaam"],
+        "te": ["వైర్‌మ్యాన్", "వైరింగ్ పని", "wiring pani"],
+    },
+    "solar-pv-installer": {
+        "en": ["solar", "solar panel", "solar installer", "solar panel fitting", "solar technician"],
+        "kn": ["ಸೋಲಾರ್", "ಸೌರ ಫಲಕ", "ಸೋಲಾರ್ ಪ್ಯಾನೆಲ್ ಕೆಲಸ", "solar kelasa"],
+        "hi": ["सोलर", "सोलर पैनल", "सोलर पैनल लगाना", "solar panel ka kaam"],
+        "te": ["సోలార్", "సోలార్ ప్యానెల్", "సోలార్ ప్యానెల్ పని", "solar pani"],
+    },
+    "two-wheeler-service-technician": {
+        "en": ["bike mechanic", "two wheeler mechanic", "scooter repair", "motorcycle mechanic", "bike repair"],
+        "kn": ["ಬೈಕ್ ಮೆಕ್ಯಾನಿಕ್", "ದ್ವಿಚಕ್ರ ವಾಹನ ರಿಪೇರಿ", "ಸ್ಕೂಟರ್ ರಿಪೇರಿ", "bike mechanic kelasa"],
+        "hi": ["बाइक मैकेनिक", "मोटरसाइकिल मिस्त्री", "स्कूटर ठीक करना", "bike mistri"],
+        "te": ["బైక్ మెకానిక్", "టూ వీలర్ మెకానిక్", "స్కూటర్ రిపేర్", "bike mechanic pani"],
+    },
+    "automotive-service-technician": {
+        "en": ["car mechanic", "mechanic", "car repair", "motor mechanic", "garage work"],
+        "kn": ["ಕಾರ್ ಮೆಕ್ಯಾನಿಕ್", "ಮೆಕ್ಯಾನಿಕ್", "ಗ್ಯಾರೇಜ್ ಕೆಲಸ", "garage kelasa"],
+        "hi": ["कार मैकेनिक", "मैकेनिक", "गाड़ी मिस्त्री", "गैराज का काम", "gaadi mistri"],
+        "te": ["కార్ మెకానిక్", "మెకానిక్", "గ్యారేజ్ పని", "garage pani"],
+    },
+    "ev-service-technician": {
+        "en": ["ev mechanic", "electric vehicle repair", "electric bike repair", "battery vehicle mechanic"],
+        "kn": ["ಇವಿ ಮೆಕ್ಯಾನಿಕ್", "ವಿದ್ಯುತ್ ವಾಹನ ರಿಪೇರಿ", "ev repair kelasa"],
+        "hi": ["ईवी मैकेनिक", "इलेक्ट्रिक गाड़ी मिस्त्री", "बैटरी वाली गाड़ी ठीक करना", "ev mistri"],
+        "te": ["ఈవీ మెకానిక్", "ఎలక్ట్రిక్ వాహన రిపేర్", "ev repair pani"],
+    },
+    "general-duty-assistant": {
+        "en": ["hospital assistant", "nursing assistant", "patient care", "ward assistant", "hospital work"],
+        "kn": ["ಆಸ್ಪತ್ರೆ ಸಹಾಯಕ", "ರೋಗಿಗಳ ಆರೈಕೆ", "hospital kelasa"],
+        "hi": ["अस्पताल सहायक", "मरीज़ों की देखभाल", "वार्ड बॉय", "hospital ka kaam"],
+        "te": ["ఆసుపత్రి సహాయకుడు", "రోగుల సంరక్షణ", "hospital pani"],
+    },
+    "home-health-aide": {
+        "en": ["home nurse", "elder care", "caregiver", "home care", "looking after old people"],
+        "kn": ["ಮನೆ ಆರೈಕೆ", "ಹಿರಿಯರ ಆರೈಕೆ", "ಮನೆ ನರ್ಸ್", "hiriyara aaraike"],
+        "hi": ["घर पर देखभाल", "बुज़ुर्गों की देखभाल", "केयरगिवर", "ghar par dekhbhal"],
+        "te": ["ఇంటి సంరక్షణ", "వృద్ధుల సంరక్షణ", "హోమ్ నర్సు", "intlo sanrakshana"],
+    },
+}
 
 # District multipliers on earnings and placement offsets (demo only).
 DISTRICT_FACTORS = {

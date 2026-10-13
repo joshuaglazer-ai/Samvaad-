@@ -20,7 +20,7 @@ All monetary values are Indian Rupees (INR). Earnings are stored per `earnings_b
 |---|---|---|
 | slug | text, unique | Stable ID used by tools, e.g. `electrician` |
 | names | JSON `{en, kn, hi, te}` | Display names (missing language → English, logged) |
-| sector | text | `Electrical`, `Automotive`, `Healthcare`, `Green Energy` |
+| sector | text | `sectors.slug`, e.g. `electrical`, `healthcare` |
 | nsqf_level | int | Indicative NSQF level ("a national ladder of skill levels") |
 | qualification_code, awarding_body | text NULL | **Left NULL** until verified on nqr.gov.in — never invented |
 | duration_months | int | Course length |

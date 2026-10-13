@@ -88,15 +88,31 @@ export interface SessionStatus {
   family_code: string | null;
 }
 
+export type LangText = Partial<Record<"en" | "kn" | "hi" | "te", string>>;
+
+/** Sectors and trades come only from the API (Update 3) — never hard-code them in the frontend. */
+export interface Sector {
+  slug: string;
+  name: string;
+  names: LangText;
+  icon: string;
+  sort_order: number;
+  trade_count: number;
+}
+
 export interface Trade {
   slug: string;
   name: string;
   name_en: string;
-  name_kn: string;
+  names: LangText;
   sector: string;
+  sector_name: string;
   nsqf_level: number;
   duration_months: number;
   icon: string;
+  traits: string[];
+  data_status: DataStatus;
+  synonyms: Partial<Record<"en" | "kn" | "hi" | "te", string[]>>;
 }
 
 export interface AlignmentResult {
@@ -173,7 +189,9 @@ export const api = {
   summary: (id: string) => request<SummaryData>(`/api/session/${id}/summary`),
   event: (body: { session_id?: string | null; event_type: string; payload?: Record<string, unknown> }) =>
     post<{ ok: boolean }>("/api/events", body),
-  trades: (lang: string) => request<Trade[]>(`/api/trades?language=${lang}`),
+  sectors: (lang: string) => request<Sector[]>(`/api/sectors?language=${lang}`),
+  trades: (lang: string, sector?: string) =>
+    request<Trade[]>(`/api/trades?language=${lang}${sector ? `&sector=${encodeURIComponent(sector)}` : ""}`),
   districts: () => request<{ name: string; lat: number; lng: number }[]>("/api/districts"),
   config: () => request<{ income_brackets: string[]; districts: string[]; concerns: string[]; education_levels: string[] }>("/api/config"),
   escalate: (body: { session_id: string; trigger: string }) => post<EscalationInfo>("/api/escalate", body),

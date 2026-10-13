@@ -98,12 +98,6 @@
     ">6L": "Above ₹6 lakh",
     "prefer_not_to_say": "Prefer not to say"
   },
-  "sectors": {
-    "Electrical": "Electrical",
-    "Automotive": "Automotive",
-    "Healthcare": "Healthcare",
-    "Green Energy": "Green Energy"
-  },
   "alignment": {
     "title": "What matters most to you?",
     "intro": "Each of you will arrange 5 cards. There are no right or wrong answers.",

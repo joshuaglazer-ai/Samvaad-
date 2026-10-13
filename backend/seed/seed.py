@@ -16,11 +16,12 @@ from app.schema_setup import upgrade_to_head
 
 from .reference_data import (
     DISTRICT_FACTORS, FEES, LADDERS, MISSING_DISTRICT, MISSING_STATE, MISSING_YEAR, NATIONAL_ROWS,
-    PROVIDER_GAPS, PROVIDER_TEMPLATES, TRADES, YEARS, COST_TEXT,
+    PROVIDER_GAPS, PROVIDER_TEMPLATES, SECTORS, SYNONYMS, TRADES, TRAITS, YEARS, COST_TEXT,
 )
 
 DEMO_SOURCE_TITLE = "SAMVAAD simulated demo dataset"
-EVIDENCE_TABLES = [m.Outcome, m.CostSupport, m.ProgressionStep, m.Provider, m.Trade, m.Source]
+EVIDENCE_TABLES = [m.Outcome, m.CostSupport, m.ProgressionStep, m.Provider, m.TradeSynonym, m.Trade, m.Sector,
+                   m.Source]
 ENGAGEMENT_TABLES = [m.CallbackRequest, m.Escalation, m.GuardrailLog, m.EvidenceGap, m.Event,
                      m.AlignmentResponse, m.Message, m.SessionRow]
 
@@ -68,14 +69,22 @@ def seed(db: Session, rng_seed: int = 42) -> dict:
     db.add(src)
     db.flush()
 
+    for sec in SECTORS:
+        db.add(m.Sector(**sec))
     trades: dict[str, m.Trade] = {}
     for t in TRADES:
-        row = m.Trade(**{k: v for k, v in t.items() if k != "base"})
+        row = m.Trade(**{k: v for k, v in t.items() if k != "base"}, traits=TRAITS.get(t["slug"], []),
+                      data_status="demo")
         db.add(row)
         trades[t["slug"]] = row
     db.flush()
 
-    counts = {"outcomes": 0, "steps": 0, "providers": 0, "costs": 0}
+    counts = {"sectors": len(SECTORS), "synonyms": 0, "outcomes": 0, "steps": 0, "providers": 0, "costs": 0}
+    for slug, by_lang in SYNONYMS.items():
+        for lang, terms in by_lang.items():
+            for term in terms:
+                db.add(m.TradeSynonym(trade_id=trades[slug].id, language=lang, term=term))
+                counts["synonyms"] += 1
     for t in TRADES:
         trade, base = trades[t["slug"]], t["base"]
         for year in YEARS:

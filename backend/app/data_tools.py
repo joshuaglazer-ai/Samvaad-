@@ -158,21 +158,59 @@ class DataTools:
         return out
 
     # ------------------------------------------------------------------ tools
+    def resolve_sector(self, sector: str | None) -> m.Sector | None:
+        """A sector by slug, or by its name in any language (case-insensitive)."""
+        if not sector:
+            return None
+        key = sector.strip().lower()
+        slug = re.sub(r"[^a-z0-9]+", "-", key).strip("-")
+        for s in self.db.scalars(select(m.Sector)):
+            if s.slug == slug or key in [str(n).lower() for n in (s.names or {}).values() if n]:
+                return s
+        return None
+
+    def list_sectors(self, language: str | None = None) -> dict:
+        if language:
+            self.ctx.language = norm_lang(language)
+        counts: dict[str, int] = {}
+        for t in self.db.scalars(select(m.Trade)):
+            counts[t.sector] = counts.get(t.sector, 0) + 1
+        records = [{
+            "slug": s.slug, "name": tr(s.names, self.ctx.language, f"sector.{s.slug}.names"), "names": s.names,
+            "icon": s.icon, "sort_order": s.sort_order, "trade_count": counts.get(s.slug, 0),
+        } for s in self.db.scalars(select(m.Sector).order_by(m.Sector.sort_order, m.Sector.slug))]
+        if not records:
+            return self._not_found("list_sectors", None, None, {})
+        return {"found": True, "records": records, "geo_level_used": None, "data_status": None,
+                "source": None, "limitations": [], "limitation_codes": []}
+
     def list_trades(self, sector: str | None = None, language: str | None = None) -> dict:
         if language:
             self.ctx.language = norm_lang(language)
         q = select(m.Trade).order_by(m.Trade.sector, m.Trade.slug)
+        sec = None
         if sector:
-            q = q.where(m.Trade.sector.ilike(sector))
+            sec = self.resolve_sector(sector)
+            if not sec:
+                return self._not_found("list_trades", None, None, {"sector": sector})
+            q = q.where(m.Trade.sector == sec.slug)
         trades = list(self.db.scalars(q))
         if not trades:
             return self._not_found("list_trades", None, None, {"sector": sector})
+        sectors = {s.slug: s for s in self.db.scalars(select(m.Sector))}
+        synonyms: dict[int, dict[str, list[str]]] = {}
+        for syn in self.db.scalars(select(m.TradeSynonym).where(m.TradeSynonym.trade_id.in_([t.id for t in trades]))):
+            synonyms.setdefault(syn.trade_id, {}).setdefault(syn.language, []).append(syn.term)
         records = [{
             "slug": t.slug, "name": self._name(t), "name_en": tr(t.names, "en"), "names": t.names,
-            "sector": t.sector, "nsqf_level": t.nsqf_level, "duration_months": t.duration_months,
+            "sector": t.sector,
+            "sector_name": tr(sectors[t.sector].names, self.ctx.language, f"sector.{t.sector}.names")
+            if t.sector in sectors else t.sector,
+            "nsqf_level": t.nsqf_level, "duration_months": t.duration_months,
             "entry_requirement": tr(t.entry_requirement, self.ctx.language, f"trade.{t.slug}.entry_requirement"),
             "job_roles": tr(t.job_roles, self.ctx.language, f"trade.{t.slug}.job_roles"),
-            "icon": t.icon,
+            "icon": t.icon, "traits": t.traits or [], "data_status": t.data_status,
+            "synonyms": synonyms.get(t.id, {}),
         } for t in trades]
         return {"found": True, "records": records, "geo_level_used": None, "data_status": "demo",
                 "source": None, "limitations": [], "limitation_codes": []}
@@ -366,7 +404,7 @@ TOOL_SCHEMAS: list[dict] = [
         "description": "List the vocational trades available in the pilot, optionally filtered by sector. "
                        "Use when the family asks what options exist.",
         "input_schema": {"type": "object", "properties": {
-            "sector": {"type": "string", "enum": ["Electrical", "Automotive", "Healthcare", "Green Energy"]},
+            "sector": {"type": "string", "description": "sector slug or name, e.g. electrical, healthcare"},
             "language": {"type": "string", "enum": ["en", "kn", "hi", "te"]},
         }, "additionalProperties": False},
     },

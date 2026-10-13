@@ -12,7 +12,6 @@ DISTRICT_COORDS = {
     "Kalaburagi": (17.3297, 76.8343),
     "Dharwad": (15.4589, 75.0078),
 }
-SECTORS = ["Electrical", "Automotive", "Healthcare", "Green Energy"]
 LANGUAGES = ["en", "kn", "hi", "te"]
 EDUCATION_LEVELS = ["class_8", "class_10", "class_12", "iti", "diploma", "graduate", "other"]
 CONCERN_CATEGORIES = [

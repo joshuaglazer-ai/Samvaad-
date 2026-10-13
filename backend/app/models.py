@@ -28,13 +28,23 @@ class Source(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
 
+class Sector(Base):
+    """Training sectors (Update 3). Names are {lang: text}; the frontend gets them only through the API."""
+    __tablename__ = "sectors"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    names: Mapped[dict] = mapped_column(JSON, default=dict)
+    icon: Mapped[str] = mapped_column(String(40), default="tool")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Trade(Base):
     __tablename__ = "trades"
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     # Translatable text is stored as {"en": …, "kn": …, "hi": …, "te": …}; see app/i18n.py (English fallback).
     names: Mapped[dict] = mapped_column(JSON, default=dict)
-    sector: Mapped[str] = mapped_column(String(60), index=True)
+    sector: Mapped[str] = mapped_column(String(60), index=True)  # sectors.slug
     nsqf_level: Mapped[int] = mapped_column(Integer)
     qualification_code: Mapped[str | None] = mapped_column(String(40))  # left NULL until verified on nqr.gov.in
     awarding_body: Mapped[str | None] = mapped_column(String(200))
@@ -43,6 +53,21 @@ class Trade(Base):
     entry_min_education: Mapped[str] = mapped_column(String(20), default="class_10")
     job_roles: Mapped[dict] = mapped_column(JSON, default=dict)  # {lang: [role, …]}
     icon: Mapped[str] = mapped_column(String(40), default="tool")
+    # Work styles this trade suits, for the "Not sure yet" quiz: hands | people | machines | outdoors | computers.
+    traits: Mapped[list] = mapped_column(JSON, default=list)
+    data_status: Mapped[str] = mapped_column(String(20), default="demo", server_default="demo")
+
+
+class TradeSynonym(Base):
+    """Everyday words people use for a trade, per language (e.g. "bijli mistri"). Needs native review."""
+    __tablename__ = "trade_synonyms"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trade_id: Mapped[int] = mapped_column(ForeignKey("trades.id", ondelete="CASCADE"), index=True)
+    language: Mapped[str] = mapped_column(String(5), index=True)
+    term: Mapped[str] = mapped_column(String(120))
+    review_status: Mapped[str] = mapped_column(String(30), default="needs_native_review")
+
+    trade: Mapped[Trade] = relationship()
 
 
 class Provider(Base):
@@ -141,6 +166,22 @@ class SessionRow(Base):
     family_code_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     parent_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     parent_language: Mapped[str | None] = mapped_column(String(5))
+    # The learner's own goal, in their words (Update 3), and the parent's hope for the child. The text is saved
+    # exactly as given, even when nothing in the database matches it.
+    aspiration_text: Mapped[str | None] = mapped_column(Text)
+    aspiration_language: Mapped[str | None] = mapped_column(String(5))
+    aspiration_source: Mapped[str | None] = mapped_column(String(10))  # voice | text | browse | quiz
+    matched_trade_slugs: Mapped[list] = mapped_column(JSON, default=list)
+    match_confidence: Mapped[float | None] = mapped_column(Float)
+    aspiration_category: Mapped[str | None] = mapped_column(String(20))  # vocational_match | degree_career | unknown
+    aspiration_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    parent_hope_text: Mapped[str | None] = mapped_column(Text)
+    parent_hope_language: Mapped[str | None] = mapped_column(String(5))
+    parent_hope_source: Mapped[str | None] = mapped_column(String(10))
+    parent_hope_matched_trade_slugs: Mapped[list] = mapped_column(JSON, default=list)
+    parent_hope_match_confidence: Mapped[float | None] = mapped_column(Float)
+    parent_hope_category: Mapped[str | None] = mapped_column(String(20))
+    parent_hope_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class Message(Base):
