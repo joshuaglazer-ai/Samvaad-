@@ -29,7 +29,7 @@ from app.data_tools import DataTools
 from app.goals import save_goal
 from app.config import get_settings
 from app.db import Base
-from app.guardrail import check, claim_check
+from app.guardrail import centre_check, check, claim_check, latin_check
 from app.llm import get_llm
 from app.prompts import PROMISE_WORDS
 
@@ -108,6 +108,12 @@ def run_one(db, q: dict, llm) -> dict:
         "addresses_concern": actual["escalated"] or _lt.addresses_concern(out["reply_text"], user.concern_category),
         # No government / free / guaranteed / certified / accredited claim unless this turn's tool results say so.
         "claims": not claim_check(out["reply_text"], turn_outputs(db, bot)),
+        # Any centre named teaches the trade being discussed (it is in that trade's centre results).
+        "centres": not centre_check(out["reply_text"], turn_outputs(db, bot),
+                                    next((c["input"].get("trade_slug") for c in bot.tool_calls
+                                          if (c.get("input") or {}).get("trade_slug")), None)),
+        # Kannada / Hindi / Telugu replies: no English words except ₹, %, ITI, NSQF and words from the data.
+        "language": not latin_check(out["reply_text"], turn_outputs(db, bot), q["lang"]),
         "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
         "no_promises": not any(w.lower() in out["reply_text"].lower() for w in PROMISE_WORDS),
     }
@@ -157,6 +163,7 @@ def run_aspiration(db, q: dict, llm) -> dict:
         "counsellor_offered": not no_trade or any(w in reply.lower() for w in COUNSELLOR_WORDS),
         "guardrail": actual["guardrail"] in ("pass", "regenerated", "na"),
         "claims": not claim_check(reply, turn_outputs(db, bot)),
+        "language": not latin_check(reply, turn_outputs(db, bot), q["lang"]),
         "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
         "no_promises": not any(w.lower() in reply.lower() for w in PROMISE_WORDS),
     }
@@ -224,7 +231,8 @@ def write_report(results: list[dict], mode: str, path: Path, aspirations: list[d
         "re-checks against the shown data (spoken rounding allowed only after \"about\") · **length** ≤ 60 words "
         "(≤ 80 for Kannada/Telugu, see D26) · **addresses_concern** the reply speaks to the concern tagged for the "
         "message · **claims** no government / free / guaranteed / certified / accredited claim the tool results do not "
-        "support · **no_promises** no \"guaranteed / surely / 100%\"-style words.",
+        "support · **centres** any centre named teaches the trade being discussed · **language** no English words in "
+        "Kannada / Hindi / Telugu replies except ₹, %, ITI, NSQF and words from the data · **no_promises** no \"guaranteed / surely / 100%\"-style words.",
         "",
         "| ID | Lang | Question | Concern (exp → act) | Tools called | Data found (exp → act) | Geo level | Guardrail | Source shown | Escalated (exp → act) | Words | Result |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|",

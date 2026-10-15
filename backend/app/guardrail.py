@@ -216,12 +216,76 @@ def claim_check(reply: str, tool_outputs: list[Any]) -> list[str]:
     return [k for k in found if not (fields.get(k) or CLAIM_RE_BY_TERM[k].search(text))]
 
 
+# Centres (Update 5): a reply may name a kind of training centre only if a centre of that kind is in this turn's
+# get_providers results FOR THE TRADE BEING DISCUSSED (or the word appears in other tool data, e.g. "After ITI" in a
+# ladder). This stops "there is an ITI nearby" when that ITI does not teach the trade.
+CENTRE_TERMS: dict[str, str] = {
+    "government_iti": r"\bITI\b|ಐಟಿಐ|आईटीआई|ఐటీఐ|ఐ\.టి\.ఐ",
+    "skill_centre": r"skill cent(?:re|er)|ಸ್ಕಿಲ್ ಸೆಂಟರ್|स्किल सेंटर|స్కిల్ సెంటర్",
+    "private_training_partner": r"skills? academy|ಅಕಾಡೆಮಿ|अकादमी|అకాడమీ",
+}
+CENTRE_RE = {k: re.compile(v, re.IGNORECASE) for k, v in CENTRE_TERMS.items()}
+# Kannada / Hindi / Telugu replies: no English words except these (and words that appear in the tool data itself,
+# such as "FY 2025-26" or a trade name that contains "EV").
+LATIN_ALLOWED = {"iti", "nsqf"}
+LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
+
+
+def _string_values(value: Any, skip_keys: tuple[str, ...] = ()) -> list[str]:
+    out: list[str] = []
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if k not in skip_keys:
+                out += _string_values(v, skip_keys)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            out += _string_values(v, skip_keys)
+    elif isinstance(value, str):
+        out.append(value)
+    return out
+
+
+def centre_check(reply: str, tool_outputs: list[Any], trade_slug: str | None = None) -> list[str]:
+    """Kinds of centre named in the reply that this trade's centre results do not contain."""
+    named = [k for k, rx in CENTRE_RE.items() if rx.search(reply or "")]
+    if not named:
+        return []
+    offered = {r.get("provider_type") for o in tool_outputs if isinstance(o, dict) and o.get("found")
+               for r in (o.get("records") or []) if isinstance(r, dict) and "provider_type" in r
+               and (trade_slug is None or o.get("trade_slug") == trade_slug)}
+    # Mentions in other data (e.g. "After ITI or Class 12") are fine; provider names never count here.
+    other_text = " ".join(_string_values(tool_outputs, skip_keys=("name",)))
+    return [k for k in named if k not in offered and not CENTRE_RE[k].search(other_text)]
+
+
+def latin_check(reply: str, tool_outputs: list[Any], language: str) -> list[str]:
+    """English words in a Kannada / Hindi / Telugu reply that are not allowed (empty for English replies)."""
+    if language == "en":
+        return []
+    data_words = {w.lower() for v in _string_values(tool_outputs) for w in LATIN_WORD.findall(v)}
+    bad = [w for w in LATIN_WORD.findall(reply or "") if w.lower() not in LATIN_ALLOWED | data_words]
+    return list(dict.fromkeys(bad))[:6]
+
+
+def fact_check(reply: str, tool_outputs: list[Any], language: str, trade_slug: str | None = None) -> list[str]:
+    """Everything beyond numbers, as issue codes: claim:<term>, centre:<kind>, latin:<word>."""
+    return ([f"claim:{c}" for c in claim_check(reply, tool_outputs)] +
+            [f"centre:{c}" for c in centre_check(reply, tool_outputs, trade_slug)] +
+            [f"latin:{w}" for w in latin_check(reply, tool_outputs, language)])
+
+
 CLAIM_NAMES = {"government": "who runs a centre (government)", "free": "free / no fee", "guaranteed": "a guarantee",
                "certified": "certification", "accredited": "accreditation"}
 LANGUAGE_NAMES = {"en": "English", "kn": "Kannada", "hi": "Hindi", "te": "Telugu"}
 
 
-def correction_note(unmatched: list[str], language: str, claims: list[str] | None = None) -> str:
+def correction_note(unmatched: list[str], language: str, issues: list[str] | None = None) -> str:
+    """`issues` are fact_check codes (claim:…, centre:…, latin:…); bare claim names are accepted too."""
+    issues = [i if ":" in i else f"claim:{i}" for i in (issues or [])]
+    claims = [i.split(":", 1)[1] for i in issues if i.startswith("claim:")]
+    centres = [i for i in issues if i.startswith("centre:")]
+    latin = [i.split(":", 1)[1] for i in issues if i.startswith("latin:")]
+    lang_name = LANGUAGE_NAMES.get(language, "English")
     parts = []
     if unmatched:
         parts.append("Your reply contained numbers that are not in this turn's tool results: "
@@ -231,8 +295,15 @@ def correction_note(unmatched: list[str], language: str, claims: list[str] | Non
         parts.append("Your reply stated things the tool results do not say: "
                      f"{', '.join(CLAIM_NAMES.get(c, c) for c in claims)}. Only state facts that appear in the tool "
                      "results; do not add who runs a centre, government status, quality, guarantees or eligibility.")
+    if centres:
+        parts.append("Your reply named a training centre that is not in the training-centre results for this trade. "
+                     "Name only centres from those results; if there are none, say no training centre for this trade "
+                     "was found nearby in our data and offer the nearest district from the results or a counsellor.")
+    if latin:
+        parts.append(f"Your reply used English words ({', '.join(latin)}). Write everything in {lang_name}; "
+                     "only ₹, %, ITI and NSQF may stay as they are. Use the names given in the context.")
     return ("[Guardrail correction] " + " ".join(parts) + " Rewrite the reply. If the data is not available, say so "
-            f"and offer a counsellor. Reply in {LANGUAGE_NAMES.get(language, 'English')}.")
+            f"and offer a counsellor. Reply in {lang_name}.")
 
 
 FALLBACK_TEXT = {

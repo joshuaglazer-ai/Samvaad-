@@ -123,7 +123,7 @@ class FakeLLM:
 
 def test_real_mode_schema_restricts_slugs_to_the_candidate_list(db):
     llm = FakeLLM({"category": "vocational_match", "matches": [{"slug": "electrician", "score": 0.95}]})
-    r = match(db, "bijli ka kaam", "hi", llm=llm)
+    r = match(db, "the person who fixes fans and lights", "en", llm=llm)  # no everyday word for fuzzy to catch
     assert r["matched"] and r["mode"] == "model" and r["candidates"][0]["slug"] == "electrician"
     enum = llm.calls[0]["properties"]["matches"]["items"]["properties"]["slug"]["enum"]
     assert set(enum) == {t.slug for t in db.scalars(select(m.Trade))}
@@ -140,13 +140,21 @@ def test_real_mode_cannot_return_a_trade_outside_the_candidate_list(db):
 
 def test_real_mode_low_scores_are_not_forced(db):
     llm = FakeLLM({"category": "vocational_match", "matches": [{"slug": "wireman", "score": 0.4}]})
-    assert match(db, "something electrical maybe", llm=llm)["matched"] is False
+    assert match(db, "something with fans and lights maybe", llm=llm)["matched"] is False
 
 
 def test_real_mode_professional_course(db):
     for said in ("degree_career", "professional_course"):  # the word list decides nursing's category
         r = match(db, "nurse", llm=FakeLLM({"category": said, "matches": []}))
         assert r["category"] == "professional_course" and r["related_sector"] == "healthcare"
+
+
+def test_fuzzy_match_first_the_model_is_not_asked(db):
+    llm = FakeLLM({"category": "unknown", "matches": []})
+    r = match(db, "bijli mistri", "hi", llm=llm)
+    assert r["matched"] and r["mode"] == "fuzzy" and llm.calls == []
+    match(db, "doctor", llm=llm)  # degree careers are known without the model too
+    assert llm.calls == []
 
 
 def test_real_mode_degree_career(db):

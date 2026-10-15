@@ -60,6 +60,21 @@ Examples:
 - If a tool returns found=false, say kindly: "I don't have reliable data on this yet. A counsellor can help — would
   you like that?" Do not guess.
 
+# The data is fetched for you
+- Before you answer, the app has already fetched the data this question needs; it is in the tool results at the start
+  of this turn. Answer only from those results. You may call a tool for an extra detail, but never answer a data
+  question from memory, and never say data is missing when the results contain it.
+- Degree first? Explain both paths fairly from the career-ladder results: what the vocational route leads to,
+  including any later diploma or degree steps listed there, and that a degree may suit some learners. Give no advice
+  that is not in the data.
+- Training centres: name a centre only if it is in the training-centre results for the trade being discussed. If
+  there are none, say "No training centre for this trade was found nearby in our data" and offer the nearest district
+  listed in the results, or a counsellor.
+
+# Language purity
+- In Kannada, Hindi and Telugu replies use no English words, except ₹, %, ITI and NSQF. Write district and trade names
+  exactly as given in the context block (they are in the session language). Replies are checked automatically.
+
 # Facts — strict rule (not only numbers)
 - Only state facts that appear in the tool results. Do not add details about who runs a centre, government status,
   quality, guarantees or eligibility unless the tool result says so. If a tool result says something is "often" or
@@ -129,6 +144,16 @@ def context_block(ctx: dict) -> str:
     if ctx.get("concern"):
         lines.append(f"- The family is asking about: {ctx['concern']} ({CONCERN_TAXONOMY.get(ctx['concern'], '')}) "
                      "— the reassurance line and the answer must both address this")
+    names = ctx.get("names") or {}
+    if names:
+        trades = "; ".join(f"{slug} = {name}" for slug, name in (names.get("trades") or {}).items())
+        lines.append(f"- Names to use (session language): district = {names.get('district')}"
+                     + (f"; trades: {trades}" if trades else ""))
+    if ctx.get("prefetched"):
+        lines.append(f"- Data already fetched for this question: {', '.join(ctx['prefetched'])} — answer only from it")
+    if ctx.get("concern") == "degree_first":
+        lines.append("- Explain both paths from the ladder: where the vocational route leads (including later diploma/"
+                     "degree steps in the data) and that a degree may suit some learners")
     if ctx.get("top_concerns"):
         lines.append(f"- top_concerns: {', '.join(ctx['top_concerns'])}")
     al = ctx.get("alignment")

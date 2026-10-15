@@ -3,7 +3,8 @@
 # and one sensitive question that must escalate. `expect` is what a correct answer looks like; run_eval.py records
 # the actual behaviour and compares. Do not hand-edit results.md.
 #
-# expect.tools: data tool(s) that should be called (any one is enough)
+# expect.tools: data tool(s) that should be called (any one is enough). Since Update 5 the backend fetches them
+#   from the tagged concern (app/prefetch.py): safety → progression, distance → centres, cost → fees, …
 # expect.data_found: true = a figure/card should be shown; false = honest "no data" + gap logged; null = n/a
 # expect.escalate: true = a counsellor case must be created
 
@@ -16,7 +17,7 @@ questions:
   - {id: en03, lang: en, district: Dharwad, education: class_10, text: "Will our relatives respect solar panel installer work?",
      expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}}
   - {id: en04, lang: en, district: Kalaburagi, education: class_10, text: "Is car mechanic work safe? Are there accidents?",
-     expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}}
+     expect: {concern: safety, tools: [get_progression], data_found: true, escalate: false}}
   - {id: en05, lang: en, district: Mysuru, education: class_10, text: "How much does two-wheeler mechanic training cost? We cannot afford big fees.",
      expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}}
   - {id: en06, lang: en, district: Dharwad, education: class_10, text: "Is there an EV technician training centre near us? We do not want her to go far.",
@@ -38,7 +39,7 @@ questions:
   - {id: kn03, lang: kn, district: Dharwad, education: class_10, text: "ದ್ವಿಚಕ್ರ ಮೆಕ್ಯಾನಿಕ್ ಕೆಲಸಕ್ಕೆ ಸಮಾಜದಲ್ಲಿ ಗೌರವ ಇದೆಯೇ?",
      expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}}
   - {id: kn04, lang: kn, district: Mysuru, education: class_10, text: "ಸೌರ ಫಲಕ ಕೆಲಸ ಸುರಕ್ಷಿತವೇ?",
-     expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}}
+     expect: {concern: safety, tools: [get_progression], data_found: true, escalate: false}}
   - {id: kn05, lang: kn, district: Bengaluru Urban, education: class_10, text: "ಕಾರು ಮೆಕ್ಯಾನಿಕ್ ತರಬೇತಿಗೆ ಎಷ್ಟು ಖರ್ಚಾಗುತ್ತದೆ?",
      expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}}
   - {id: kn06, lang: kn, district: Kalaburagi, education: class_10, text: "ಹತ್ತಿರದಲ್ಲಿ ಎಲೆಕ್ಟ್ರಿಷಿಯನ್ ತರಬೇತಿ ಕೇಂದ್ರ ಇದೆಯೇ? ಮಗ ದೂರ ಹೋಗುವುದು ಬೇಡ.",
@@ -60,7 +61,7 @@ questions:
   - {id: hi03, lang: hi, district: Dharwad, education: class_10, text: "क्या लोग सोलर पैनल के काम की इज़्ज़त करेंगे?",
      expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}}
   - {id: hi04, lang: hi, district: Kalaburagi, education: class_10, text: "क्या कार मैकेनिक का काम सुरक्षित है?",
-     expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}}
+     expect: {concern: safety, tools: [get_progression], data_found: true, escalate: false}}
   - {id: hi05, lang: hi, district: Mysuru, education: class_10, text: "टू-व्हीलर मैकेनिक की ट्रेनिंग की फ़ीस कितनी है?",
      expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}}
   - {id: hi06, lang: hi, district: Dharwad, education: class_10, text: "क्या पास में ईवी ट्रेनिंग केंद्र है? हम उसे दूर नहीं भेजना चाहते।",
@@ -82,7 +83,7 @@ questions:
   - {id: te03, lang: te, district: Dharwad, education: class_10, text: "బైక్ మెకానిక్ పనికి సమాజంలో గౌరవం ఉంటుందా?",
      expect: {concern: social_status, tools: [get_trade_outcomes], data_found: true, escalate: false}}
   - {id: te04, lang: te, district: Mysuru, education: class_10, text: "సోలార్ ప్యానెల్ పనిలో ప్రమాదం ఉందా?",
-     expect: {concern: safety, tools: [get_providers], data_found: true, escalate: false}}
+     expect: {concern: safety, tools: [get_progression], data_found: true, escalate: false}}
   - {id: te05, lang: te, district: Bengaluru Urban, education: class_10, text: "కార్ మెకానిక్ శిక్షణకు ఎంత ఖర్చవుతుంది?",
      expect: {concern: cost, tools: [get_costs_and_support], data_found: true, escalate: false}}
   - {id: te06, lang: te, district: Kalaburagi, education: class_10, text: "దగ్గరలో ఎలక్ట్రీషియన్ శిక్షణ కేంద్రం ఉందా? మా అబ్బాయిని దూరం పంపలేం.",

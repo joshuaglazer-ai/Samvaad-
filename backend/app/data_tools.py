@@ -125,11 +125,25 @@ class DataTools:
         row = self.db.scalar(select(m.Trade).where(m.Trade.slug == slug))
         if row:
             return row
-        for t in self.db.scalars(select(m.Trade)):
+        all_trades = list(self.db.scalars(select(m.Trade)))
+        for t in all_trades:
             names = [n for n in (t.names or {}).values() if n]
             en = (t.names or {}).get("en", "")
             if key.lower() in [n.lower() for n in names] or slug == re.sub(r"[^a-z0-9]+", "-", en.lower()):
                 return t
+        # A model may pass an ID that is close but not exact ("ev-technician"): try the everyday words (synonym
+        # matching), then the IDs themselves. Only a single clear winner is accepted; anything else stays unknown.
+        from . import aspiration
+        from rapidfuzz import fuzz
+
+        words = key.replace("-", " ").replace("_", " ")
+        r = aspiration.match_fuzzy(words, self.ctx.language, self.trade_terms())
+        if r["matched"] and (len(r["candidates"]) == 1 or r["candidates"][0]["score"] > r["candidates"][1]["score"]):
+            return next(t for t in all_trades if t.slug == r["candidates"][0]["slug"])
+        scored = sorted(((fuzz.token_set_ratio(words, t.slug.replace("-", " ")), t) for t in all_trades),
+                        key=lambda x: -x[0])
+        if scored and scored[0][0] >= 90 and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 10)                 and len(words.split()) >= 2:
+            return scored[0][1]
         return None
 
     def _gap(self, tool: str, trade_slug: str | None, district: str | None, query: dict) -> None:
@@ -240,7 +254,11 @@ class DataTools:
                     "text": text, "language": lang, "confidence": 0.0, "error": "empty text"}
         trades = self.trade_terms()
         llm = llm or get_llm()
-        result = aspiration.match_fuzzy(text, lang, trades) if llm.is_mock             else aspiration.match_with_model(text, lang, trades, llm)
+        # Fuzzy matching first (fast, free, and better on everyday words); the model only when it finds nothing and
+        # the goal is not a degree career or professional course.
+        result = aspiration.match_fuzzy(text, lang, trades)
+        if not result["matched"] and result["category"] == "unknown" and not llm.is_mock:
+            result = aspiration.match_with_model(text, lang, trades, llm)
         if not result["matched"]:
             if district is None and self.ctx.session_id:
                 row = self.db.get(m.SessionRow, self.ctx.session_id)
@@ -358,9 +376,16 @@ class DataTools:
         offering = [p for p in self.db.scalars(select(m.Provider)) if trade.slug in (p.trades or [])]
         here = [p for p in offering if p.district == district]
         if not here:
-            other = sorted({p.district for p in offering})
+            # No centre for THIS trade here. Offer the nearest districts that do teach it (never another trade's centre).
+            from .config import DISTRICT_COORDS
+
+            def km(d: str) -> float:
+                (a, b), (c, e) = DISTRICT_COORDS.get(district, (0, 0)), DISTRICT_COORDS.get(d, (0, 0))
+                return ((a - c) ** 2 + (b - e) ** 2) ** 0.5
+            other = sorted({p.district for p in offering}, key=km)
             return self._not_found("get_providers", trade.slug, district, query,
-                                   {"trade_name": self._name(trade), "other_districts": other})
+                                   {"trade_name": self._name(trade), "other_districts": other,
+                                    "nearest_district": other[0] if other else None})
         statuses = {p.data_status for p in here}
         codes = ["demo"] if "demo" in statuses else []
         return {

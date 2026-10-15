@@ -16,10 +16,11 @@ from .alignment import session_alignment
 from .data_tools import TOOL_SCHEMAS, DataTools
 from .escalation import case_info, check_triggers, create_case
 from . import lang_text as _lt
-from .guardrail import FALLBACK_TEXT, check, claim_check, correction_note
+from .guardrail import FALLBACK_TEXT, check, correction_note, fact_check
 from .i18n import detect_script, norm_lang
 from .llm import BaseLLM, LLMResponse, get_llm
 from .goals import compare_goals
+from . import aspiration, mock_counsellor, prefetch
 from .prompts import SYSTEM_PROMPT, context_block
 from .sentiment import is_sensitive, tag_message, wants_counsellor
 
@@ -39,7 +40,9 @@ ESCALATE_TOOL = {
                                                "repeated_failure"]},
     }, "required": ["reason", "trigger"], "additionalProperties": False},
 }
-TOOLS = TOOL_SCHEMAS + [ESCALATE_TOOL]
+# Goal matching is done by the backend (onboarding, and the prefetch for unmatched goals), never offered to the model
+# in a chat turn: models called it on ordinary questions and then said there was no data.
+TOOLS = [t for t in TOOL_SCHEMAS if t["name"] != "match_aspiration"] + [ESCALATE_TOOL]
 
 ESCALATION_LINE = {
     "en": "A counsellor will join shortly. You can wait here or ask for a call back.",
@@ -189,6 +192,49 @@ def run_tool_loop(llm: BaseLLM, messages: list[dict], ctx: dict, context_text: s
     return resp
 
 
+def display_names(language: str, district: str | None, outputs: list[tuple[str, dict, dict]]) -> dict:
+    """District and trade names in the session language (from the reference data / database) for the model to use."""
+    from seed.reference_data import DISTRICT_NAMES
+
+    from .i18n import tr
+
+    names = {"district": tr(DISTRICT_NAMES.get(district or "", {}), language, "district") or district}
+    trades = {o["trade_slug"]: o["trade_name"] for _, o, _ in outputs
+              if isinstance(o, dict) and o.get("trade_slug") and o.get("trade_name")}
+    if trades:
+        names["trades"] = trades
+    return names
+
+
+def shown_cards(outputs: list[tuple[str, dict, dict]], language: str) -> list[dict]:
+    """One card per (type, trade, district): a later result for the same thing replaces the earlier one, but results
+    for a different trade or district each keep their own card — so every figure in the reply is on a card."""
+    cards: dict[tuple, dict] = {}
+    for name, out, _ in outputs:
+        card = build_card(name, out, language)
+        if card:
+            d = card["data"]
+            cards.pop(key := (card["type"], d.get("trade_slug"), d.get("district") or d.get("district_requested")), None)
+            cards[key] = card
+    return list(cards.values())
+
+
+def number_sources(outputs: list[tuple[str, dict, dict]], cards: list[dict]) -> list:
+    """Numbers in a reply must come from what the family can see: the shown cards (same records), plus results that
+    have no card (e.g. the list of trades)."""
+    return [c["data"] for c in cards] + [c["evidence"] for c in cards] + \
+        [o for n, o, _ in outputs if n not in TOOL_TO_CARD]
+
+
+def named_trade(db: Session, text: str, language: str) -> str | None:
+    """A trade the family names in this message: pilot keywords first, then the everyday words (synonyms)."""
+    slug = mock_counsellor.detect_trade(text)
+    if slug:
+        return slug
+    r = aspiration.match_fuzzy(text, language, DataTools(db, language=language).trade_terms())
+    return r["candidates"][0]["slug"] if r["matched"] else None
+
+
 def handle_turn(db: Session, session_id: str, speaker: str, text: str, language: str,
                 llm: BaseLLM | None = None, device_id: str | None = None) -> dict[str, Any]:
     llm = llm or get_llm()
@@ -214,7 +260,7 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     ctx = build_context(db, s, speaker, language, text)
     # The concern is tagged BEFORE the reply is written, so the reassurance and the answer address what was asked.
     ctx["concern"] = tag.concern_category
-    context_text = context_block(ctx)
+    ctx["named_trade"] = named_trade(db, text, language)
     messages = build_history(db, s.id, exclude_id=user_msg.id)
     messages.append({"role": "user", "content": f"[{speaker}] {text}"})
     if messages[0]["role"] != "user":
@@ -230,33 +276,62 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         escalation = case_info(db, case)
         return {"escalated": True, "case_id": case.id, "trigger": case.trigger}
 
-    resp = run_tool_loop(llm, messages, ctx, context_text, tools, outputs, on_escalate)
+    # Deterministic data fetching: the backend fetches what this concern needs BEFORE any model is called.
+    plan = prefetch.plan(text, ctx)
+    for name, args in plan:
+        out = on_escalate(args.get("trigger", "sensitive_topic")) if name == "escalate" else tools.execute(name, args)
+        outputs.append((name, out, args))
+    ctx["prefetched"] = [n for n, _, _ in outputs]
+    ctx["discussed_trade"] = next((a.get("trade_slug") for _, _, a in outputs if a.get("trade_slug")), None)
+    ctx["names"] = display_names(language, ctx.get("district"), outputs)
+    context_text = context_block(ctx)
+
+    if plan and plan[0][0] == "match_aspiration" and not outputs[0][1].get("matched"):
+        # The learner's goal has no database trade: the kind, number-free line is written by the backend.
+        text_out = mock_counsellor.compose(text, ctx, [(n, o) for n, o, _ in outputs])
+        resp = LLMResponse("end_turn", [{"type": "text", "text": text_out}], text=text_out, provider="template")
+    else:
+        if outputs:
+            ids = [f"prefetch_{i}" for i in range(len(outputs))]
+            messages.append({"role": "assistant", "content": [
+                {"type": "tool_use", "id": i, "name": n, "input": a} for i, (n, _, a) in zip(ids, outputs)]})
+            messages.append({"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": i, "content": json.dumps(o, ensure_ascii=False, default=str)}
+                for i, (_, o, _) in zip(ids, outputs)]})
+        resp = run_tool_loop(llm, messages, ctx, context_text, tools, outputs, on_escalate)
     reply = resp.text
     status = "pass"
+
+    def verify(candidate: str) -> tuple[Any, list[str]]:
+        cards_now = shown_cards(outputs, language)
+        return (check(candidate, number_sources(outputs, cards_now)),
+                fact_check(candidate, [o for _, o, _ in outputs], language, ctx.get("discussed_trade")))
 
     if not reply:
         reply, status = FALLBACK_TEXT[language], "fallback"
         db.add(m.GuardrailLog(session_id=s.id, attempt=1, outcome="fallback", reply_text="(empty or refused)",
                               unmatched=[]))
     else:
-        # Numbers must come from this turn's tools, and so must claims such as "government", "free", "guaranteed",
-        # "certified" or "accredited". Either failure: regenerate once with a correction note, then fall back.
-        result = check(reply, [o for _, o, _ in outputs])
-        claims = claim_check(reply, [o for _, o, _ in outputs])
-        if not result.passed or claims:
+        # Numbers must match the shown cards; facts (government / free / guaranteed / …), centres named and the
+        # language must match the tool results. Any failure: regenerate once with a correction note, then fall back.
+        result, issues = verify(reply)
+        if not result.passed or issues:
             db.add(m.GuardrailLog(session_id=s.id, attempt=1, outcome="regenerated", reply_text=reply,
-                                  unmatched=result.unmatched + [f"claim:{c}" for c in claims]))
+                                  unmatched=result.unmatched + issues))
             messages.append({"role": "assistant", "content": resp.content})
-            messages.append({"role": "user", "content": correction_note(result.unmatched, language, claims)})
+            messages.append({"role": "user", "content": correction_note(result.unmatched, language, issues)})
             resp = run_tool_loop(llm, messages, ctx, context_text, tools, outputs, on_escalate)
             retry = resp.text
-            second = check(retry, [o for _, o, _ in outputs]) if retry else None
-            claims2 = claim_check(retry, [o for _, o, _ in outputs]) if retry else []
-            if second and second.passed and not claims2:
+            second, issues2 = verify(retry) if retry else (None, [])
+            serious = [i for i in issues2 if not i.startswith("latin:")]
+            if second and second.passed and not serious:
+                # A stray English word after one retry is logged but not worth losing a correct answer for.
                 reply, status = retry, "regenerated"
+                if issues2:
+                    log.info("reply kept with English words after one retry: %s", issues2)
             else:
                 db.add(m.GuardrailLog(session_id=s.id, attempt=2, outcome="fallback", reply_text=retry or "",
-                                      unmatched=(second.unmatched if second else []) + [f"claim:{c}" for c in claims2]))
+                                      unmatched=(second.unmatched if second else []) + issues2))
                 reply, status = FALLBACK_TEXT[language], "fallback"
             log.info("guardrail triggered for session %s: %s", s.id, status)
 
@@ -269,15 +344,11 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         reply = f"{reply} {_lt.SWITCH_OFFER[suggest_language]}"
 
     provider = resp.provider
-    log.info("turn in session %s answered by %s%s%s", s.id, provider,
+    log.info("turn in session %s answered by %s (prefetched: %s)%s%s", s.id, provider, ctx.get("prefetched"),
              " (backend called the data tools)" if ctx.get("backend_planned_tools") else "",
              f" after failures: {ctx['provider_failures']}" if ctx.get("provider_failures") else "")
 
-    cards: list[dict] = []
-    for name, out, _ in outputs:
-        card = build_card(name, out, language)
-        if card:
-            cards = [c for c in cards if not (c["type"] == card["type"])] + [card]
+    cards = shown_cards(outputs, language)
 
     assistant = m.Message(session_id=s.id, role="assistant", speaker="bot", text=reply, language=language,
                           tool_calls=[{"name": n, "input": i, "found": o.get("found", o.get("escalated", False))}

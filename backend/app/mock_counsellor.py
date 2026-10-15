@@ -79,30 +79,11 @@ def detect_intent(text: str) -> str:
 
 
 def plan(text: str, ctx: dict) -> list[tuple[str, dict]]:
-    """Decide which tools to call for a user message. Returns [(tool_name, input), ...]."""
-    if is_sensitive(text):
-        return [("escalate", {"reason": "Sensitive topic raised by the family", "trigger": "sensitive_topic"})]
-    if wants_counsellor(text):
-        return [("escalate", {"reason": "Family asked to talk to a counsellor", "trigger": "user_request"})]
-    intent = detect_intent(text)
-    trade = detect_trade(text) or ctx.get("last_trade") or ctx.get("suggested_trade")
-    district = ctx.get("district")
-    goal = ctx.get("goal") or {}
-    if not trade and intent != "options" and goal.get("text") and not goal.get("trades"):
-        # The learner's own goal has no database trade: check it again (logs the gap once) and answer kindly.
-        return [("match_aspiration", {"text": goal["text"], "language": ctx.get("language", "en")})]
-    if intent == "options" or not trade:
-        return [("list_trades", {"language": ctx.get("language", "en")})]
-    if intent == "progression":
-        return [("get_progression", {"trade_slug": trade, "education_level": ctx.get("learner_education")})]
-    if intent == "costs":
-        args = {"trade_slug": trade, "district": district}
-        if ctx.get("income_bracket"):
-            args["income_bracket"] = ctx["income_bracket"]
-        return [("get_costs_and_support", args)]
-    if intent in ("providers", "safety"):
-        return [("get_providers", {"trade_slug": trade, "district": district})]
-    return [("get_trade_outcomes", {"trade_slug": trade, "district": district})]
+    """Which tools a message needs — the same deterministic plan the backend prefetches (app/prefetch.py)."""
+    from .prefetch import plan as prefetch_plan
+
+    return prefetch_plan(text, ctx)
+
 
 
 # ------------------------------------------------------------------------------------------ composing
@@ -179,7 +160,8 @@ T = {
         "scheme_maybe": " Support may be available, depending on family income.",
         "providers": "In {district}, you can visit {name}.",
         "providers_more": " There are {n} more centres on the card.",
-        "providers_none": "I couldn't find a {trade} centre in {district} in our data.",
+        "providers_none": "No training centre for this trade was found nearby in our data.",
+        "providers_nearest": " The nearest one in our data is in {district}.",
         "safety": "Training centres follow safety rules, and learners are taught protective practices.",
         "options": "Some options are {names}.",
         "escalate": "Thank you for telling us. A counsellor is the right person to help and will join shortly. You can wait here or ask for a call back.",
@@ -215,7 +197,8 @@ T = {
         "scheme_maybe": " ಕುಟುಂಬದ ಆದಾಯವನ್ನು ಅವಲಂಬಿಸಿ ನೆರವು ಸಿಗಬಹುದು.",
         "providers": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ ನೀವು {name} ಗೆ ಭೇಟಿ ನೀಡಬಹುದು.",
         "providers_more": " ಇನ್ನೂ {n} ಕೇಂದ್ರಗಳು ಕಾರ್ಡ್‌ನಲ್ಲಿವೆ.",
-        "providers_none": "{district} ಜಿಲ್ಲೆಯಲ್ಲಿ {trade} ಕೇಂದ್ರ ನಮ್ಮ ಮಾಹಿತಿಯಲ್ಲಿ ಸಿಗಲಿಲ್ಲ.",
+        "providers_none": "ನಮ್ಮ ಮಾಹಿತಿಯಲ್ಲಿ ಈ ತರಬೇತಿಯ ಕೇಂದ್ರ ಹತ್ತಿರದಲ್ಲಿ ಸಿಗಲಿಲ್ಲ.",
+        "providers_nearest": " ನಮ್ಮ ಮಾಹಿತಿಯಲ್ಲಿ ಹತ್ತಿರದ ಕೇಂದ್ರ {district} ಜಿಲ್ಲೆಯಲ್ಲಿದೆ.",
         "safety": "ತರಬೇತಿ ಕೇಂದ್ರಗಳು ಸುರಕ್ಷತಾ ನಿಯಮಗಳನ್ನು ಪಾಲಿಸುತ್ತವೆ, ಮತ್ತು ಕಲಿಯುವವರಿಗೆ ರಕ್ಷಣೆಯ ವಿಧಾನಗಳನ್ನು ಕಲಿಸಲಾಗುತ್ತದೆ.",
         "options": "ಕೆಲವು ಆಯ್ಕೆಗಳು: {names}.",
         "escalate": "ನಮಗೆ ತಿಳಿಸಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಇದಕ್ಕೆ ಸಲಹೆಗಾರರೇ ಸರಿಯಾದ ಸಹಾಯ; ಅವರು ಸ್ವಲ್ಪ ಸಮಯದಲ್ಲಿ ಸೇರುತ್ತಾರೆ. ಇಲ್ಲೇ ಕಾಯಬಹುದು ಅಥವಾ ಮರಳಿ ಕರೆ ಕೇಳಬಹುದು.",
@@ -294,11 +277,16 @@ def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
         return g["unknown"]
     if not res.get("found"):
         if name == "get_providers" and res.get("trade_name"):
-            miss = t["providers_none"].format(trade=res["trade_name"], district=_district_name(ctx.get("district"), lang))
+            # Never another trade's centre: say none was found for this trade, offer the nearest district or a person.
+            miss = t["providers_none"]
+            if res.get("nearest_district"):
+                miss += t["providers_nearest"].format(district=_district_name(res["nearest_district"], lang))
             return f"{opener} {miss} {t['nodata']}"
         return f"{opener} {t['nodata']}"
 
     fact, question = "", ""
+    if concern == "safety" and name != "list_trades":
+        return f"{opener} {t['safety']}{t['q_safety']}"
     if name == "get_trade_outcomes":
         rec = res["records"][0]
         place = ""

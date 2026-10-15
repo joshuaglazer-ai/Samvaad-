@@ -59,7 +59,15 @@ guardrail, short kind answers, four languages, escalation. Beyond numbers, repli
 results: a reply that says "government", "free", "guaranteed", "certified" or "accredited" (in any of the four
 languages) without the tool data saying so is regenerated once and then replaced by the safe message. The concern is
 tagged before the reply is written and passed to the model ("The family is asking about: cost"), so the reassurance
-and the answer address what was asked. Claude (`LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`) is
+and the answer address what was asked.
+
+**The backend fetches the data, not the model.** Before any model is called, `app/prefetch.py` fetches what the
+question needs from the tagged concern and the trade (named, last discussed, or the confirmed goal): earnings and
+jobs → outcomes; cost → fees and support; degree first / respect → career ladder + outcomes; distance → training
+centres for that trade; safety → career ladder (+ escalation for sensitive worries). The model answers from these
+results (it may fetch extra details), cards come from them, and every number in a reply must be on a shown card.
+Replies are also checked so that any centre named teaches the trade being discussed, and Kannada / Hindi / Telugu
+replies contain no English words except ₹, %, ITI and NSQF. Claude (`LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`) is
 still supported.
 
 **Voice:** the browser's own speech is the default (free). When a phone has no Kannada, Hindi or Telugu voice or

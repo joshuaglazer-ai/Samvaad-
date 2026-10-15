@@ -169,7 +169,7 @@ def test_guardrail_regenerates_then_falls_back(db, fix, expected):
     s = m.SessionRow(language="en", district="Mysuru", learner_education="class_10", consent_given=True)
     db.add(s)
     db.commit()
-    out = handle_turn(db, s.id, "parent", "How much?", "en", llm=LyingLLM(fix))
+    out = handle_turn(db, s.id, "parent", "How much does an electrician earn?", "en", llm=LyingLLM(fix))
     assert out["guardrail_status"] == expected
     assert "99,999" not in out["reply_text"]
     assert out["cards"][0]["type"] == "outcome"  # cards come from tools, so they survive

@@ -84,25 +84,31 @@ def test_native_tool_calling_round_trip_and_provider_is_logged(db):
     assert script.requests[0]["model"] == "sarvam-big" and script.requests[0]["tool_choice"] == "auto"
 
 
-def test_figures_without_tools_make_the_backend_call_the_data_tools(db):
-    """A model that skips tool calling and states a number never gets that number through."""
-    script = Script(reply("Electricians earn ₹99,999 a month."),  # invented figure, no tool call
-                    reply("Earnings matter to every family. The card shows what this data says. Shall I show more?"))
+def test_figures_without_tools_make_the_client_plan_the_data_tools():
+    """Used when a provider is called without prefetched data: an invented figure turns into planned tool calls."""
+    llm, _ = provider("gemini", Script(reply("Electricians earn ₹99,999 a month.")))
+    ctx = {"user_text": "How much does an electrician earn?", "district": "Mysuru", "concern": "income"}
+    out = llm.respond("S", "C", [{"role": "user", "content": ctx["user_text"]}], TOOLS, ctx)
+    assert out.stop_reason == "tool_use" and out.tool_calls[0].name == "get_trade_outcomes"
+    assert ctx["backend_planned_tools"] is True
+
+
+def test_the_backend_prefetches_data_before_the_model_answers(db):
+    script = Script(reply("Earnings matter to every family. The card shows what this data says. Shall I show more?"))
     llm, _ = provider("gemini", script)
-    s = session(db)
-    out = handle_turn(db, s.id, "parent", "How much does an electrician earn?", "en", llm=llm)
-    assert "99,999" not in out["reply_text"]
-    assert out["cards"] and out["cards"][0]["type"] == "outcome"  # the backend fetched the data itself
-    assert script.requests[1]["messages"][-1]["role"] == "tool"
+    out = handle_turn(db, session(db).id, "parent", "How much does an electrician earn?", "en", llm=llm)
+    first = script.requests[0]["messages"]
+    assert first[-1]["role"] == "tool" and first[-2]["tool_calls"][0]["function"]["name"] == "get_trade_outcomes"
+    assert len(script.requests) == 1 and out["cards"][0]["type"] == "outcome"
+    assert "match_aspiration" not in {t["function"]["name"] for t in script.requests[0]["tools"]}
 
 
-def test_backend_tool_mode_calls_tools_before_the_model(db):
-    script = Script(reply("Many families have this question. The card shows the cost. Shall I show centres near you?"))
+def test_backend_tool_mode_plans_tools_without_asking_the_model():
+    script = Script()
     llm, _ = provider("sarvam", script, tool_mode="backend")
-    s = session(db)
-    out = handle_turn(db, s.id, "parent", "How much does solar training cost?", "en", llm=llm)
-    assert len(script.requests) == 1 and script.requests[0]["messages"][-1]["role"] == "tool"
-    assert out["cards"][0]["type"] == "costs"
+    ctx = {"user_text": "How much does solar training cost?", "district": "Mysuru", "concern": "cost"}
+    out = llm.respond("S", "C", [{"role": "user", "content": ctx["user_text"]}], TOOLS, ctx)
+    assert script.requests == [] and out.tool_calls[0].name == "get_costs_and_support"
 
 
 def test_guardrail_still_rejects_unsupported_numbers_from_a_provider(db):
@@ -173,7 +179,7 @@ def test_aspiration_matching_with_a_provider_and_with_a_failing_chain(db):
     script = Script(reply('{"category": "vocational_match", "matches": [{"slug": "electrician", "score": 0.93}]}'),
                     auto_tag=False)
     llm, _ = provider("gemini", script, strict_schema=False)
-    r = DataTools(db).match_aspiration("bijli ka kaam", "hi", llm=llm)
+    r = DataTools(db).match_aspiration("the person who fixes fans and lights", "en", llm=llm)
     assert r["matched"] and r["mode"] == "model"
     assert "additionalProperties" not in json.dumps(script.requests[0]["response_format"])
     dead = FallbackLLM([provider("sarvam", Script(httpx.Response(500), auto_tag=False))[0], MockLLM()])
