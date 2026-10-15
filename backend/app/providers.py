@@ -136,9 +136,11 @@ class OpenAICompatLLM(BaseLLM):
     @classmethod
     def for_provider(cls, name: str, s: Settings) -> "OpenAICompatLLM":
         if name == "sarvam":
+            effort = lambda v: None if v.strip().lower() in ("none", "off", "") else v.strip().lower()  # noqa: E731
             return cls("sarvam", s.sarvam_base_url, {"api-subscription-key": s.sarvam_api_key}, s.sarvam_model,
                        s.sarvam_fast_model, s.sarvam_tool_mode, s.llm_max_retries,
-                       chat_extra={"reasoning_effort": "low"}, fast_extra={"reasoning_effort": "low"})
+                       chat_extra={"reasoning_effort": effort(s.sarvam_reasoning_effort)},
+                       fast_extra={"reasoning_effort": effort(s.sarvam_fast_reasoning_effort)})
         if name == "gemini":
             return cls("gemini", s.gemini_base_url, {"Authorization": f"Bearer {s.gemini_api_key}"}, s.gemini_model,
                        s.gemini_fast_model, s.gemini_tool_mode, s.llm_max_retries,
@@ -188,16 +190,23 @@ class OpenAICompatLLM(BaseLLM):
             planned = self._planned(ctx)
             if planned:
                 return planned
-        data = self._post({
+        payload = {
             "model": self.model, "messages": to_openai_messages(system, context_text, messages),
             "tools": to_openai_tools(tools, self.strict_schema), "tool_choice": "auto",
             "max_tokens": 1500, "temperature": 0.3, **self.chat_extra,
-        })
+        }
+        data = self._post(payload)
         try:
             choice = data["choices"][0]
             msg = choice["message"]
         except (KeyError, IndexError, TypeError) as exc:
             raise ProviderError(f"{self.name}: unexpected response shape") from exc
+        if (choice.get("finish_reason") == "length" and not _clean(msg.get("content")) and not msg.get("tool_calls")
+                and payload.get("reasoning_effort") is not None):
+            # A thinking model used the whole budget on reasoning and wrote nothing: ask once more without thinking.
+            log.info("%s spent its token budget on reasoning; retrying once without it", self.name)
+            data = self._post({**payload, "reasoning_effort": None})
+            choice, msg = data["choices"][0], data["choices"][0]["message"]
         if choice.get("finish_reason") == "content_filter" or msg.get("refusal"):
             return LLMResponse("refusal", [], text="", provider=self.name)
         text = _clean(msg.get("content"))
@@ -226,7 +235,7 @@ class OpenAICompatLLM(BaseLLM):
 
     # ---------------------------------------------------------------- small JSON tasks (tagging, matching)
     def _fast(self, system: str, text: str, response_format: dict | None) -> str:
-        payload: dict[str, Any] = {"model": self.fast_model, "max_tokens": 600, "temperature": 0,
+        payload: dict[str, Any] = {"model": self.fast_model, "max_tokens": 800, "temperature": 0,
                                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": text}],
                                    **self.fast_extra}
         if response_format:

@@ -16,7 +16,7 @@ from .alignment import session_alignment
 from .data_tools import TOOL_SCHEMAS, DataTools
 from .escalation import case_info, check_triggers, create_case
 from . import lang_text as _lt
-from .guardrail import FALLBACK_TEXT, check, correction_note
+from .guardrail import FALLBACK_TEXT, check, claim_check, correction_note
 from .i18n import detect_script, norm_lang
 from .llm import BaseLLM, LLMResponse, get_llm
 from .goals import compare_goals
@@ -212,6 +212,8 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     db.flush()
 
     ctx = build_context(db, s, speaker, language, text)
+    # The concern is tagged BEFORE the reply is written, so the reassurance and the answer address what was asked.
+    ctx["concern"] = tag.concern_category
     context_text = context_block(ctx)
     messages = build_history(db, s.id, exclude_id=user_msg.id)
     messages.append({"role": "user", "content": f"[{speaker}] {text}"})
@@ -237,20 +239,24 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         db.add(m.GuardrailLog(session_id=s.id, attempt=1, outcome="fallback", reply_text="(empty or refused)",
                               unmatched=[]))
     else:
+        # Numbers must come from this turn's tools, and so must claims such as "government", "free", "guaranteed",
+        # "certified" or "accredited". Either failure: regenerate once with a correction note, then fall back.
         result = check(reply, [o for _, o, _ in outputs])
-        if not result.passed:
+        claims = claim_check(reply, [o for _, o, _ in outputs])
+        if not result.passed or claims:
             db.add(m.GuardrailLog(session_id=s.id, attempt=1, outcome="regenerated", reply_text=reply,
-                                  unmatched=result.unmatched))
+                                  unmatched=result.unmatched + [f"claim:{c}" for c in claims]))
             messages.append({"role": "assistant", "content": resp.content})
-            messages.append({"role": "user", "content": correction_note(result.unmatched, language)})
+            messages.append({"role": "user", "content": correction_note(result.unmatched, language, claims)})
             resp = run_tool_loop(llm, messages, ctx, context_text, tools, outputs, on_escalate)
             retry = resp.text
             second = check(retry, [o for _, o, _ in outputs]) if retry else None
-            if second and second.passed:
+            claims2 = claim_check(retry, [o for _, o, _ in outputs]) if retry else []
+            if second and second.passed and not claims2:
                 reply, status = retry, "regenerated"
             else:
                 db.add(m.GuardrailLog(session_id=s.id, attempt=2, outcome="fallback", reply_text=retry or "",
-                                      unmatched=second.unmatched if second else []))
+                                      unmatched=(second.unmatched if second else []) + [f"claim:{c}" for c in claims2]))
                 reply, status = FALLBACK_TEXT[language], "fallback"
             log.info("guardrail triggered for session %s: %s", s.id, status)
 

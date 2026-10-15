@@ -1,6 +1,6 @@
 """Run the 40 concern questions and 12 aspiration questions; write eval/results.md (generated — do not hand-edit).
 
-    python -m eval.run_eval                                  # uses LLM_PROVIDER from .env (mock by default)
+    python -m eval.run_eval                                  # mock (default) — never calls a real provider
     python -m eval.run_eval --provider sarvam --require-real   # real run (see run_eval_real.ps1 / .sh)
 
 Each question runs in a fresh session on a private in-memory database seeded with the demo data, so the
@@ -29,7 +29,7 @@ from app.data_tools import DataTools
 from app.goals import save_goal
 from app.config import get_settings
 from app.db import Base
-from app.guardrail import check
+from app.guardrail import check, claim_check
 from app.llm import get_llm
 from app.prompts import PROMISE_WORDS
 
@@ -54,6 +54,15 @@ def fresh_db():
     db = sessionmaker(bind=eng, autoflush=False, expire_on_commit=False)()
     seed(db)
     return db
+
+
+def turn_outputs(db, bot) -> list:
+    """Re-run the turn's recorded data-tool calls (deterministic) to get the full results the reply was based on."""
+    tools = DataTools(db, language=bot.language)
+    outs = [tools.execute(c["name"], c.get("input") or {}) for c in bot.tool_calls
+            if c.get("name") not in ("escalate",)]
+    db.rollback()  # re-running must not add evidence gaps
+    return outs
 
 
 def run_one(db, q: dict, llm) -> dict:
@@ -95,6 +104,10 @@ def run_one(db, q: dict, llm) -> dict:
         # Figures must carry evidence; a plain list of options has no figures and no card.
         "evidence": exp["data_found"] is not True or source_shown or tools == ["list_trades"],
         "guardrail": actual["guardrail"] in ("pass", "regenerated") and numbers_ok,
+        # The reply speaks to the concern tagged for this message (reassurance + answer), not some other worry.
+        "addresses_concern": actual["escalated"] or _lt.addresses_concern(out["reply_text"], user.concern_category),
+        # No government / free / guaranteed / certified / accredited claim unless this turn's tool results say so.
+        "claims": not claim_check(out["reply_text"], turn_outputs(db, bot)),
         "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
         "no_promises": not any(w.lower() in out["reply_text"].lower() for w in PROMISE_WORDS),
     }
@@ -143,6 +156,7 @@ def run_aspiration(db, q: dict, llm) -> dict:
         "gap_logged": (len(gaps) == 1) if no_trade else (len(gaps) == 0),
         "counsellor_offered": not no_trade or any(w in reply.lower() for w in COUNSELLOR_WORDS),
         "guardrail": actual["guardrail"] in ("pass", "regenerated", "na"),
+        "claims": not claim_check(reply, turn_outputs(db, bot)),
         "length": actual["words"] <= WORD_LIMIT.get(q["lang"], 60),
         "no_promises": not any(w.lower() in reply.lower() for w in PROMISE_WORDS),
     }
@@ -208,7 +222,9 @@ def write_report(results: list[dict], mode: str, path: Path, aspirations: list[d
         "**escalation** case created iff expected · **honest_fallback** missing data → gap logged + counsellor offered · "
         "**evidence** every shown card carries source + status · **guardrail** reply passed the numeric guardrail and every number "
         "re-checks against the shown data (spoken rounding allowed only after \"about\") · **length** ≤ 60 words "
-        "(≤ 80 for Kannada/Telugu, see D26) · **no_promises** no \"guaranteed / surely / 100%\"-style words.",
+        "(≤ 80 for Kannada/Telugu, see D26) · **addresses_concern** the reply speaks to the concern tagged for the "
+        "message · **claims** no government / free / guaranteed / certified / accredited claim the tool results do not "
+        "support · **no_promises** no \"guaranteed / surely / 100%\"-style words.",
         "",
         "| ID | Lang | Question | Concern (exp → act) | Tools called | Data found (exp → act) | Geo level | Guardrail | Source shown | Escalated (exp → act) | Words | Result |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|",
@@ -232,8 +248,8 @@ def write_report(results: list[dict], mode: str, path: Path, aspirations: list[d
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=str(HERE / "results.md"))
-    ap.add_argument("--provider", choices=["mock", "sarvam", "gemini", "anthropic"],
-                    help="override LLM_PROVIDER for this run")
+    ap.add_argument("--provider", choices=["mock", "sarvam", "gemini", "anthropic"], default="mock",
+                    help="LLM for this run (default mock: never calls a provider, whatever backend/.env says)")
     ap.add_argument("--require-real", action="store_true",
                     help="stop instead of falling back to mock mode when the provider has no API key")
     ap.add_argument("--pause", type=float, default=0.0, help="seconds to wait between questions (rate limits)")

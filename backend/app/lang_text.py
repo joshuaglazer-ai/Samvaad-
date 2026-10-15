@@ -322,3 +322,36 @@ GOAL_NOMATCH = {
            "unknown": "చెప్పినందుకు ధన్యవాదాలు. దీని గురించి ఇంకా నా దగ్గర నమ్మదగిన సమాచారం లేదు. కౌన్సిలర్‌తో మాట్లాడాలనుకుంటున్నారా, లేదా సంబంధిత ఆప్షన్లు చూడాలనుకుంటున్నారా?",
            "found": "మీ లక్ష్యానికి మా దగ్గర సమాచారం ఉన్న దగ్గరి ఆప్షన్లు: {names}. ఏది చూద్దాం?"},
 }
+
+
+# Words that show a reply is about the worry the family raised (eval check "addresses_concern"). A reply addresses the
+# tagged concern if it contains any of these, in any of the four languages. Needs native review.
+CONCERN_ADDRESS = {
+    "income": ["earn", "salary", "income", "wage", "pay", "ಸಂಪಾದ", "ಸಂಬಳ", "ಆದಾಯ", "ವೇತನ",
+               "कमा", "कमाई", "सैलरी", "वेतन", "आमदनी", "तनख्वाह", "సంపాద", "జీతం", "ఆదాయం", "వేతనం"],
+    "job_security": ["job", "work", "placed", "placement", "steady", "employ", "ಕೆಲಸ", "ಉದ್ಯೋಗ", "ನೌಕರಿ", "ಸ್ಥಿರ",
+                     "नौकरी", "काम", "रोज़गार", "रोजगार", "स्थिर", "ఉద్యోగ", "పని", "ఉపాధి", "స్థిర"],
+    "social_status": ["respect", "valued", "value", "status", "society", "community", "dignity", "ಗೌರವ", "ಮೌಲ್ಯ",
+                      "ಸಮಾಜ", "ಬೇಡಿಕೆ", "इज़्ज़त", "इज्जत", "सम्मान", "समाज", "क़द्र", "कद्र", "महत्व",
+                      "గౌరవ", "విలువ", "సమాజ", "డిమాండ్"],
+    "safety": ["safe", "safety", "protect", "risk", "ಸುರಕ್ಷ", "ರಕ್ಷಣ", "सुरक्षा", "सुरक्षित", "बचाव",
+               "భద్రత", "సురక్షిత", "రక్షణ"],
+    "cost": ["fee", "cost", "free", "afford", "scholarship", "stipend", "support", "ಶುಲ್ಕ", "ಖರ್ಚ", "ವೆಚ್ಚ", "ಉಚಿತ",
+             "ನೆರವು", "ವಿದ್ಯಾರ್ಥಿವೇತನ", "फ़ीस", "फीस", "खर्च", "ख़र्च", "मुफ़्त", "छात्रवृत्ति", "मदद",
+             "ఫీజు", "ఖర్చ", "ఉచిత", "స్కాలర్‌షిప్", "సహాయం"],
+    "distance_migration": ["near", "home", "centre", "center", "district", "close", "far", "visit", "ಹತ್ತಿರ", "ಮನೆ",
+                           "ಕೇಂದ್ರ", "ಜಿಲ್ಲೆ", "ದೂರ", "पास", "घर", "केंद्र", "सेंटर", "ज़िले", "जिले", "दूर",
+                           "దగ్గర", "ఇంటి", "కేంద్ర", "జిల్లా", "దూరం"],
+    "degree_first": ["degree", "study", "studying", "diploma", "path", "step", "ladder", "grow", "ಪದವಿ", "ಓದ",
+                     "ಡಿಪ್ಲೊಮಾ", "ದಾರಿ", "ಹಂತ", "ಏಣಿ", "ಬೆಳೆ", "डिग्री", "पढ़ाई", "डिप्लोमा", "रास्ता", "सीढ़ी",
+                     "कदम", "డిగ్రీ", "చదువ", "డిప్లొమా", "దారి", "దశ", "నిచ్చెన", "ఎదుగ"],
+}
+
+
+def addresses_concern(reply: str, concern: str | None) -> bool:
+    """True if the reply speaks to the tagged concern ("other" / untagged always counts as addressed)."""
+    words = CONCERN_ADDRESS.get(concern or "other")
+    if not words:
+        return True
+    low = (reply or "").lower()
+    return any(w.lower() in low for w in words)

@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     sarvam_model: str = "sarvam-105b"
     sarvam_fast_model: str = "sarvam-105b"   # sarvam-30b was deprecated by Sarvam (Oct 2026); 105b at low effort
     sarvam_tool_mode: str = "native"         # native | backend (backend: the server calls data tools itself)
+    # sarvam-105b thinks before answering; "none" turns that off. At "low" it can still spend the whole token budget
+    # on thinking for small JSON tasks and return nothing, so tagging/matching use "none" (checked live 2026-10-15).
+    sarvam_reasoning_effort: str = "low"
+    sarvam_fast_reasoning_effort: str = "none"
     sarvam_voice_fallback: bool = True       # Sarvam speech when the browser has no voice for the language
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"

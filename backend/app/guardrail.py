@@ -174,14 +174,65 @@ def check(reply: str, tool_outputs: list[Any]) -> GuardrailResult:
     return GuardrailResult(passed=not unmatched, claims=claims, unmatched=unmatched)
 
 
-def correction_note(unmatched: list[str], language: str) -> str:
-    listed = ", ".join(dict.fromkeys(unmatched))
-    return (
-        "[Guardrail correction] Your reply contained numbers that are not in this turn's tool results: "
-        f"{listed}. Rewrite the reply. Use only figures exactly as they appear in the tool results "
-        "(you may call a tool again). Do not estimate, convert or calculate new numbers. If the data is "
-        f"not available, say so and offer a counsellor. Reply in {'Kannada' if language == 'kn' else 'English'}."
-    )
+# ------------------------------------------------------------------------------------------ claim check
+# Beyond numbers (Update 4): words that make a factual promise about a centre or course. A reply may use one only when
+# this turn's tool results support it — the same word (in any language) appears in the tool data, or a field says so
+# (e.g. a fee of 0 supports "free"; a non-empty `accreditation` supports "accredited"). A flag is treated exactly like
+# an unsupported number: regenerate once, then the safe fallback message.
+CLAIM_TERMS: dict[str, str] = {
+    "government": r"\bgovernment\b|\bgovt\b|\bsarkari\b|ಸರ್ಕಾರ|सरकार|ప్రభుత్వ",
+    "free": r"\bfree\b(?!\s+to\b)|\bmuft\b|ಉಚಿತ|मुफ़्त|मुफ्त|फ़्री|फ्री|ఉచిత",
+    "guaranteed": r"guarantee|ಖಾತರಿ|ಗ್ಯಾರಂಟಿ|गारंटी|गारण्टी|గ్యారంటీ|హామీ",
+    "certified": r"\bcertified\b|ಪ್ರಮಾಣೀಕೃತ|प्रमाणित|సర్టిఫైడ్",
+    "accredited": r"\baccredited\b|ಮಾನ್ಯತೆ ಪಡೆದ|मान्यता प्राप्त|గుర్తింపు పొందిన",
+}
+CLAIM_RE_BY_TERM = {k: re.compile(v, re.IGNORECASE) for k, v in CLAIM_TERMS.items()}
+
+
+def _walk(value: Any):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            yield k, v
+            yield from _walk(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _walk(v)
+
+
+def claim_check(reply: str, tool_outputs: list[Any]) -> list[str]:
+    """Claim words in the reply that this turn's tool results do not support (empty list = fine)."""
+    found = [k for k, rx in CLAIM_RE_BY_TERM.items() if rx.search(reply or "")]
+    if not found:
+        return []
+    import json
+
+    text = json.dumps(tool_outputs, ensure_ascii=False, default=str)
+    pairs = list(_walk(tool_outputs))
+    fields = {
+        "free": any(k in ("fee_min", "fee_max") and v == 0 for k, v in pairs),
+        "accredited": any(k == "accreditation" and v for k, v in pairs),
+        "government": any(k == "provider_type" and str(v).startswith("government") for k, v in pairs),
+    }
+    return [k for k in found if not (fields.get(k) or CLAIM_RE_BY_TERM[k].search(text))]
+
+
+CLAIM_NAMES = {"government": "who runs a centre (government)", "free": "free / no fee", "guaranteed": "a guarantee",
+               "certified": "certification", "accredited": "accreditation"}
+LANGUAGE_NAMES = {"en": "English", "kn": "Kannada", "hi": "Hindi", "te": "Telugu"}
+
+
+def correction_note(unmatched: list[str], language: str, claims: list[str] | None = None) -> str:
+    parts = []
+    if unmatched:
+        parts.append("Your reply contained numbers that are not in this turn's tool results: "
+                     f"{', '.join(dict.fromkeys(unmatched))}. Use only figures exactly as they appear in the tool "
+                     "results (you may call a tool again). Do not estimate, convert or calculate new numbers.")
+    if claims:
+        parts.append("Your reply stated things the tool results do not say: "
+                     f"{', '.join(CLAIM_NAMES.get(c, c) for c in claims)}. Only state facts that appear in the tool "
+                     "results; do not add who runs a centre, government status, quality, guarantees or eligibility.")
+    return ("[Guardrail correction] " + " ".join(parts) + " Rewrite the reply. If the data is not available, say so "
+            f"and offer a counsellor. Reply in {LANGUAGE_NAMES.get(language, 'English')}.")
 
 
 FALLBACK_TEXT = {

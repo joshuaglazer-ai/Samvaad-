@@ -219,3 +219,18 @@ def test_turn_records_provider_for_mock(client, db):
                                        "language": "en"}).json()
     assert r["llm_provider"] == "mock"
     assert db.scalar(select(m.Message.llm_provider).where(m.Message.role == "assistant")) == "mock"
+
+
+def test_reasoning_that_eats_the_budget_is_retried_without_thinking(db):
+    script = Script(httpx.Response(200, json={"choices": [{"index": 0, "message": {"role": "assistant", "content": ""},
+                                                           "finish_reason": "length"}]}),
+                    reply("Thank you for asking. Would you like to see the options?"))
+    llm, _ = provider("sarvam", script, chat_extra={"reasoning_effort": "low"})
+    out = llm.respond("S", "C", [{"role": "user", "content": "hello"}], TOOLS, {"user_text": "hello"})
+    assert out.text.startswith("Thank you") and script.requests[1]["reasoning_effort"] is None
+
+
+def test_sarvam_fast_tasks_run_without_thinking():
+    s = Settings(_env_file=None, llm_provider="sarvam", sarvam_api_key="k", gemini_api_key="")
+    sarvam = build_llm(s).chain[0]
+    assert sarvam.fast_extra == {"reasoning_effort": None} and sarvam.chat_extra == {"reasoning_effort": "low"}

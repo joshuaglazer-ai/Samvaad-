@@ -264,7 +264,8 @@ def reassure(concern: str, ctx: dict, lang: str) -> str:
 def compose(user_text: str, ctx: dict, results: list[tuple[str, dict]]) -> str:
     lang = ctx.get("language") if ctx.get("language") in T else "en"
     t = T[lang]
-    concern = keyword_concern(user_text) or "other"
+    # The concern tagged before the reply (chat.py) — the same one the real model is told to address.
+    concern = ctx.get("concern") or keyword_concern(user_text) or "other"
 
     for name, res in results:
         if name == "escalate":

@@ -55,7 +55,11 @@ configured provider (`LLM_FALLBACK_ORDER`, default `sarvam,gemini,anthropic`) an
 answers. Every bot reply records which provider answered (`messages.llm_provider`, also in the server log and the
 eval report). All rules stay the same with every provider: numbers only from data tools (if a model gives figures
 without calling a tool, the backend calls the data tools itself and the model answers from the results), the numeric
-guardrail, short kind answers, four languages, escalation. Claude (`LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`) is
+guardrail, short kind answers, four languages, escalation. Beyond numbers, replies may only state facts from the tool
+results: a reply that says "government", "free", "guaranteed", "certified" or "accredited" (in any of the four
+languages) without the tool data saying so is regenerated once and then replaced by the safe message. The concern is
+tagged before the reply is written and passed to the model ("The family is asking about: cost"), so the reassurance
+and the answer address what was asked. Claude (`LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`) is
 still supported.
 
 **Voice:** the browser's own speech is the default (free). When a phone has no Kannada, Hindi or Telugu voice or
@@ -114,7 +118,7 @@ python -m seed.import_csv --kind synonyms --file synonyms.csv --mapping seed/map
 
 ```bash
 cd backend && python -m pytest                 # 210 tests: data tools, guardrail, languages, goals and matching, catalogue admin + import, family codes, escalation, analytics, chat
-python -m eval.run_eval                        # 40 concern questions (10 each en/kn/hi/te) + 12 aspiration questions → eval/results.md
+python -m eval.run_eval                        # mock (default, never calls a provider): 40 concern + 12 aspiration questions → eval/results.md
 cd ../frontend && npm test                     # Vitest: i18n completeness, no hard-coded trades, search, contrast (light + dark), star maths, voice, Lite mode
 npx playwright test                            # e2e: journeys in 4 languages, goal flows, two-phone family, dark mode, sky, a11y, escalation, admin + trades
 ```
