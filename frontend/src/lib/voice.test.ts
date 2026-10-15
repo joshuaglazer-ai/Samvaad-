@@ -45,3 +45,25 @@ describe("Hindi and Telugu voices", () => {
     expect(pickVoice([{ lang: "en-IN" }], "hi")).toBeUndefined();
   });
 });
+
+describe("server voice fallback routing (browser first, to save credits)", () => {
+  it("uses the browser voice whenever the phone has one", async () => {
+    const { chooseSpeakRoute } = await import("./voice");
+    expect(chooseSpeakRoute(true, true)).toBe("browser");
+    expect(chooseSpeakRoute(true, false)).toBe("browser");
+  });
+  it("uses server speech only when the phone has no voice for the language", async () => {
+    const { chooseSpeakRoute } = await import("./voice");
+    expect(chooseSpeakRoute(false, true)).toBe("server");
+    expect(chooseSpeakRoute(false, false)).toBe("none"); // the calm notice is shown and tap options keep working
+  });
+  it("switches listening to the server only when the browser has no recogniser for the language", async () => {
+    const { chooseListenRoute } = await import("./voice");
+    expect(chooseListenRoute(true, null, true, true)).toBe("browser");
+    expect(chooseListenRoute(true, "no-speech", true, true)).toBe("browser");
+    expect(chooseListenRoute(true, "language-not-supported", true, true)).toBe("server");
+    expect(chooseListenRoute(false, null, true, true)).toBe("server");
+    expect(chooseListenRoute(false, null, true, false)).toBe("none"); // cannot record on this phone
+    expect(chooseListenRoute(false, null, false, true)).toBe("none");
+  });
+});

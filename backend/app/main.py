@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import admin, catalogue, chat, data, escalation, session
+from .routers import admin, catalogue, chat, data, escalation, session, voice
 
 settings = get_settings()
 
@@ -24,8 +24,10 @@ app.include_router(data.router)
 app.include_router(escalation.router)
 app.include_router(admin.router)
 app.include_router(catalogue.router)
+app.include_router(voice.router)
 
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "llm_mode": "mock" if settings.use_mock_llm else "anthropic"}
+    chain = settings.provider_chain
+    return {"status": "ok", "llm_mode": "mock" if settings.use_mock_llm else chain[0], "llm_providers": chain}

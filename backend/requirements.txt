@@ -8,8 +8,9 @@ anthropic>=0.60
 cryptography>=42
 pyyaml>=6.0
 rapidfuzz>=3.9
+python-multipart>=0.0.9
+httpx>=0.27                 # Sarvam / Gemini providers and server voice
 python-dotenv>=1.0
 psycopg[binary]>=3.1 ; sys_platform != "win32"
 # tests
 pytest>=8.2
-httpx>=0.27

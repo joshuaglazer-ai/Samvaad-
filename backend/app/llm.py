@@ -30,10 +30,12 @@ class LLMResponse:
     content: list[Any]                 # appended back as the assistant turn
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
+    provider: str = "mock"             # which provider produced this response (logged per turn)
 
 
 class BaseLLM:
     is_mock = True
+    name = "mock"
 
     def respond(self, system: str, context_text: str, messages: list[dict], tools: list[dict],
                 ctx: dict) -> LLMResponse:
@@ -82,6 +84,7 @@ class MockLLM(BaseLLM):
 
 class AnthropicLLM(BaseLLM):
     is_mock = False
+    name = "anthropic"
 
     def __init__(self, settings: Settings):
         import anthropic
@@ -110,10 +113,11 @@ class AnthropicLLM(BaseLLM):
         )
         if resp.stop_reason == "refusal":
             log.warning("model refused a turn: %s", getattr(resp, "stop_details", None))
-            return LLMResponse("refusal", [], text="")
+            return LLMResponse("refusal", [], text="", provider=self.name)
         text = "".join(b.text for b in resp.content if b.type == "text").strip()
         calls = [ToolCall(id=b.id, name=b.name, input=dict(b.input)) for b in resp.content if b.type == "tool_use"]
-        return LLMResponse(resp.stop_reason or "end_turn", list(resp.content), text=text, tool_calls=calls)
+        return LLMResponse(resp.stop_reason or "end_turn", list(resp.content), text=text, tool_calls=calls,
+                           provider=self.name)
 
     def quick_json(self, system, text) -> str:
         resp = self.client.messages.create(
@@ -137,11 +141,26 @@ class AnthropicLLM(BaseLLM):
 _client: BaseLLM | None = None
 
 
+def build_llm(settings: Settings | None = None) -> BaseLLM:
+    """The provider chain from settings: chosen provider → other configured providers → mock."""
+    from .providers import FallbackLLM, OpenAICompatLLM
+
+    s = settings or get_settings()
+    chain: list[BaseLLM] = []
+    for name in s.provider_chain:
+        if name == "mock":
+            chain.append(MockLLM())
+        elif name == "anthropic":
+            chain.append(AnthropicLLM(s))
+        else:
+            chain.append(OpenAICompatLLM.for_provider(name, s))
+    return chain[0] if len(chain) == 1 else FallbackLLM(chain)
+
+
 def get_llm() -> BaseLLM:
     global _client
     if _client is None:
-        s = get_settings()
-        _client = MockLLM() if s.use_mock_llm else AnthropicLLM(s)
+        _client = build_llm()
     return _client
 
 

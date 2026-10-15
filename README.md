@@ -43,23 +43,35 @@ cd frontend && npm install && npm run dev                            # app on ht
 The Counsellor console (`/counsellor`) and Admin dashboard (`/admin`) use the PINs in `backend/.env`
 (`change-me` by default — **change them**).
 
-### Using the real Claude API
-Set in `backend/.env`:
+### Using a real LLM (free options: Sarvam AI, Google Gemini)
+Set in `backend/.env` (keys stay on the backend; the frontend never calls an LLM):
 ```
-LLM_MODE=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-5-5        # counselling turns
-ANTHROPIC_FAST_MODEL=claude-haiku-5-5    # message tagging
+LLM_PROVIDER=sarvam                      # mock | sarvam | gemini | anthropic
+SARVAM_API_KEY=sk_...                    # docs.sarvam.ai — sarvam-105b for counselling and tagging
+GEMINI_API_KEY=...                       # aistudio.google.com — free-tier Flash, used as the backup
 ```
-The frontend never calls the LLM; keys stay on the backend. If the key is missing, the app falls back to mock mode.
+If the chosen provider fails (an error, or still rate-limited after 2 retries with backoff), the turn moves to the next
+configured provider (`LLM_FALLBACK_ORDER`, default `sarvam,gemini,anthropic`) and finally to mock, so the app always
+answers. Every bot reply records which provider answered (`messages.llm_provider`, also in the server log and the
+eval report). All rules stay the same with every provider: numbers only from data tools (if a model gives figures
+without calling a tool, the backend calls the data tools itself and the model answers from the results), the numeric
+guardrail, short kind answers, four languages, escalation. Claude (`LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`) is
+still supported.
+
+**Voice:** the browser's own speech is the default (free). When a phone has no Kannada, Hindi or Telugu voice or
+recogniser, the app uses Sarvam speech (Bulbul TTS, Saaras STT) through the backend, if `SARVAM_API_KEY` is set and
+`SARVAM_VOICE_FALLBACK=true`. Repeated texts are cached on the server so they are not paid for twice.
 
 ## Environment variables
 
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | `sqlite:///./samvaad.db` locally; PostgreSQL in deployment (`postgres://…` is normalised automatically) |
-| `LLM_MODE` | `mock` (default, deterministic, still uses real data tools) or `anthropic` |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_FAST_MODEL` | Claude settings (backend only) |
+| `LLM_PROVIDER` | `mock` (default, deterministic, still uses real data tools), `sarvam`, `gemini` or `anthropic` (`LLM_MODE` is the older name and still works) |
+| `LLM_FALLBACK_ORDER`, `LLM_MAX_RETRIES` | Providers to try next if one fails (then mock); retries on 429/503 with backoff (default 2) |
+| `SARVAM_API_KEY`, `SARVAM_MODEL`, `SARVAM_FAST_MODEL`, `SARVAM_TOOL_MODE`, `SARVAM_VOICE_FALLBACK` | Sarvam AI (default models `sarvam-105b`; tool mode `native` or `backend`; server voice fallback on/off) |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FAST_MODEL`, `GEMINI_TOOL_MODE` | Google Gemini via its OpenAI-compatible endpoint (defaults `gemini-flash-latest`, `gemini-flash-lite-latest`) |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_FAST_MODEL` | Claude settings (optional, paid) |
 | `ANTHROPIC_FALLBACKS` | Empty (default) or `default` to enable server-side refusal fallback — not yet verified with a real API call |
 | `ADMIN_PIN`, `COUNSELLOR_PIN` | Demo-grade PINs for staff screens |
 | `PHONE_ENCRYPTION_KEY` | Fernet key for call-back numbers (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). **Required in deployment** — without it an in-memory key is used and numbers become unreadable after a restart |
@@ -111,16 +123,17 @@ test once with a trace, so a flaky test is reported as "flaky" (traces in `front
 Latest eval (mock mode): **40/40** concern questions and **12/12** aspiration questions pass every check — see
 [backend/eval/results.md](backend/eval/results.md).
 
-To run the same eval against the real Claude API once a key is in `backend/.env`:
-`backend/eval/run_eval_real.ps1` (Windows) or `backend/eval/run_eval_real.sh` — it writes `eval/results_real.md` and
-does not touch the mock results. It refuses to run (and calls nothing) if no key is set. Real calls are billed.
+To run the same eval against a real provider once its key is in `backend/.env`:
+`backend/eval/run_eval_real.ps1 -Provider sarvam|gemini` (Windows) or `backend/eval/run_eval_real.sh --provider
+sarvam|gemini` — it writes `eval/results_real_<provider>.md` (with which provider answered each turn) and does not
+touch the mock results. It refuses to run (and calls nothing) if no key is set. Real calls are billed.
 
 ## Architecture
 
 ```
 React PWA (Vite, Tailwind, R3F, Recharts, Leaflet, i18next, Web Speech)
         │  REST + WebSocket (no LLM keys in the browser)
-FastAPI ── chat.py ── llm.py (Claude | deterministic mock)
+FastAPI ── chat.py ── llm.py → providers.py (Sarvam | Gemini | Claude → fallback → deterministic mock)
    │            ├── data_tools.py   ← the ONLY place figures are queried (fallback + gap logging)
    │            ├── guardrail.py    ← every number in a reply must match this turn's tool output
    │            ├── sentiment.py    ← concern + sentiment per message
@@ -136,12 +149,13 @@ accessibility status in [docs/accessibility_checklist.md](docs/accessibility_che
 - **All outcome data is demo data.** Placement and earnings figures, providers, fees and ladders are simulated until organiser or official data is imported. NSQF levels and progression routes are indicative.
 - **Kannada, Hindi and Telugu text is AI-written** and marked `needs_native_review` (`kn.json`, `hi.json`, `te.json`, `backend/app/lang_text.py`, trade names in `seed/reference_data.py`).
 - **Parent responses are self-identified.** "Answer together" and "parent on own phone" reduce impersonation but cannot prevent it; the dashboard labels parent figures accordingly and can filter by participation mode.
+- **Free providers are new.** Sarvam (`sarvam-105b`) and Gemini Flash were checked with single live calls (tool calling, Kannada speech round trip) and are covered by offline tests; the full 52-question eval has not yet been run against them. Sarvam's free credits are limited (₹100 on sign-up) and Gemini's free tier has low per-minute limits — the app retries and falls back, but heavy use will hit those limits.
 - **Server-side refusal fallback is off** (`ANTHROPIC_FALLBACKS` empty) because it has not been verified with a real API call yet.
 - **Not yet tested with real families.** The accessibility checklist includes a field-test template for the team.
 - **Staff auth is demo-grade** (a shared PIN per role, sent as a header; also as a query parameter for WebSocket and CSV export). Replace it with real identity before any live use.
 - **Voice** depends on the device: many Android phones lack Kannada or Telugu speech voices or recognisers (the app then shows a calm notice in that language and the tap options keep working). `lib/voice.ts` is ready for a server-side provider such as Bhashini.
 - **Live-chat rooms are in-process**, so run one backend worker (or add Redis pub/sub to scale out). Polling keeps working either way.
-- **Mock mode** answers from templates and covers the pilot's trades and concerns. Open-ended questions need `LLM_MODE=anthropic`.
+- **Mock mode** answers from templates and covers the pilot's trades and concerns. Open-ended questions need a real provider (`LLM_PROVIDER=sarvam` or `gemini`).
 - **Goal matching** in mock mode uses everyday-word lists and fuzzy matching; the starter synonyms and the degree-career / professional-course word lists are AI-written and need native review. Real mode (fast model, candidate list only) has been tested with a fake model, not yet with a real API key.
 - **Sentiment** in mock mode comes from keywords and is approximate. The dashboard labels it as a model estimate, separate from self-reported mood.
 - Lighthouse mobile scores have not yet been measured on a deployed build (target ≥ 80 in Lite mode).

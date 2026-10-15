@@ -5,7 +5,7 @@ training (SIH 2026, PS SIH26241, MSDE). Learners **and** parents use it together
 Pilot: Karnataka — Bengaluru Urban, Mysuru, Kalaburagi, Dharwad; sectors Electrical, Automotive,
 Healthcare, Green Energy; ~8 trades.
 
-Layout: `backend/` (FastAPI + SQLAlchemy + Anthropic SDK), `frontend/` (React + Vite + Tailwind), `docs/`.
+Layout: `backend/` (FastAPI + SQLAlchemy + LLM providers: Sarvam, Gemini, Claude, mock), `frontend/` (React + Vite + Tailwind), `docs/`.
 Decisions go in `docs/decisions.md`. Data fields in `docs/data_dictionary.md`. Sources in `docs/source_register.md`.
 
 ## Non-negotiable rules
@@ -27,7 +27,8 @@ Decisions go in `docs/decisions.md`. Data fields in `docs/data_dictionary.md`. S
    `frontend/src/i18n/{en,kn,hi,te}.json`; kn/hi/te carry `"_review_status": "needs_native_review"`. Backend text in
    `app/lang_text.py` and DB text as `{lang: text}` JSON (missing → English, logged). Everyday spoken language
    (Hindi: not Sanskritised). Never word-for-word.
-10. App must run fully with `LLM_MODE=mock` (no API key). Mock still calls real data tools.
+10. App must run fully with `LLM_PROVIDER=mock` (no API key). Mock still calls real data tools. Real providers
+    (`sarvam`, `gemini`, `anthropic`) fall back to the next configured one, then to mock.
 11. Do not add: vector DBs, fine-tuning, multi-agent frameworks, LangChain, WhatsApp, user accounts.
 
 ## Answer shape (Update 2)

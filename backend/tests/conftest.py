@@ -2,7 +2,10 @@ import os
 
 # Tests always run in mock mode on an in-memory database, whatever .env says.
 os.environ["LLM_MODE"] = "mock"
+os.environ["LLM_PROVIDER"] = "mock"
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["SARVAM_API_KEY"] = ""   # tests never call a real provider, whatever backend/.env says
+os.environ["GEMINI_API_KEY"] = ""
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["ADMIN_PIN"] = "admin-test"
 os.environ["COUNSELLOR_PIN"] = "counsellor-test"

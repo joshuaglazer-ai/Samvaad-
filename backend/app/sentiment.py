@@ -129,8 +129,8 @@ def tag_message(text: str, llm=None) -> Tag:
     try:
         raw = llm.quick_json(TAG_SYSTEM, text)
     except Exception as exc:  # network/API errors must never break the chat
-        log.warning("sentiment tagging failed: %s", exc)
-        return Tag()
+        log.warning("sentiment tagging failed, using keywords: %s", exc)
+        return keyword_tag(text)
     return parse_tag(raw)
 
 

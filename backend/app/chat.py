@@ -262,6 +262,11 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     if suggest_language:
         reply = f"{reply} {_lt.SWITCH_OFFER[suggest_language]}"
 
+    provider = resp.provider
+    log.info("turn in session %s answered by %s%s%s", s.id, provider,
+             " (backend called the data tools)" if ctx.get("backend_planned_tools") else "",
+             f" after failures: {ctx['provider_failures']}" if ctx.get("provider_failures") else "")
+
     cards: list[dict] = []
     for name, out, _ in outputs:
         card = build_card(name, out, language)
@@ -271,7 +276,7 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
     assistant = m.Message(session_id=s.id, role="assistant", speaker="bot", text=reply, language=language,
                           tool_calls=[{"name": n, "input": i, "found": o.get("found", o.get("escalated", False))}
                                       for n, o, i in outputs],
-                          cards=cards, guardrail_status=status, device_id=device_id)
+                          cards=cards, guardrail_status=status, device_id=device_id, llm_provider=provider)
     db.add(assistant)
     db.flush()
 
@@ -301,6 +306,7 @@ def handle_turn(db: Session, session_id: str, speaker: str, text: str, language:
         "guardrail_status": status,
         "escalation": escalation,
         "reply_language": language,
+        "llm_provider": provider,
         "suggest_language": suggest_language,
     }
 

@@ -25,7 +25,23 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     database_url: str = "sqlite:///./samvaad.db"
-    llm_mode: str = "mock"  # mock | anthropic
+    # Which LLM answers: mock | sarvam | gemini | anthropic. LLM_MODE is the older name and is still honoured.
+    llm_provider: str = ""
+    llm_mode: str = "mock"
+    # If the chosen provider fails (error, rate limit), try the next configured one in this order, then mock.
+    llm_fallback_order: str = "sarvam,gemini,anthropic"
+    llm_max_retries: int = 2           # retries on 429 / 503, with backoff
+    sarvam_api_key: str = ""
+    sarvam_base_url: str = "https://api.sarvam.ai/v1"
+    sarvam_model: str = "sarvam-105b"
+    sarvam_fast_model: str = "sarvam-105b"   # sarvam-30b was deprecated by Sarvam (Oct 2026); 105b at low effort
+    sarvam_tool_mode: str = "native"         # native | backend (backend: the server calls data tools itself)
+    sarvam_voice_fallback: bool = True       # Sarvam speech when the browser has no voice for the language
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    gemini_model: str = "gemini-flash-latest"
+    gemini_fast_model: str = "gemini-flash-lite-latest"
+    gemini_tool_mode: str = "native"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5-5"
     anthropic_fast_model: str = "claude-haiku-5-5"
@@ -49,9 +65,29 @@ class Settings(BaseSettings):
                 return "postgresql+psycopg://" + v[len(prefix):]
         return v
 
+    def provider_key(self, name: str) -> str:
+        return {"sarvam": self.sarvam_api_key, "gemini": self.gemini_api_key,
+                "anthropic": self.anthropic_api_key}.get(name, "")
+
+    @property
+    def chosen_provider(self) -> str:
+        p = (self.llm_provider or self.llm_mode or "mock").strip().lower()
+        return p if p in ("mock", "sarvam", "gemini", "anthropic") else "mock"
+
+    @property
+    def provider_chain(self) -> list[str]:
+        """The chosen provider (if it has a key), then the other configured providers in fallback order, then mock.
+        Choosing mock means mock only — no network calls."""
+        first = self.chosen_provider
+        if first == "mock":
+            return ["mock"]
+        order = [first] + [p.strip().lower() for p in self.llm_fallback_order.split(",") if p.strip()]
+        chain = [p for p in dict.fromkeys(order) if p in ("sarvam", "gemini", "anthropic") and self.provider_key(p)]
+        return chain + ["mock"]
+
     @property
     def use_mock_llm(self) -> bool:
-        return self.llm_mode.lower() != "anthropic" or not self.anthropic_api_key
+        return self.provider_chain[0] == "mock"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -202,6 +202,8 @@ class Message(Base):
     guardrail_status: Mapped[str] = mapped_column(String(12), default="na")  # pass|regenerated|fallback|na
     # Random per-device id (no personal data) so two-device sessions can tell the phones apart.
     device_id: Mapped[str | None] = mapped_column(String(40))
+    # Which LLM provider produced a bot reply (sarvam | gemini | anthropic | mock); NULL for other messages.
+    llm_provider: Mapped[str | None] = mapped_column(String(20))
     # True for messages exchanged in the live counsellor room (kept out of the LLM history).
     live: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
